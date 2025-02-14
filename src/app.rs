@@ -1,7 +1,15 @@
-use leptos::task::spawn_local;
-use leptos::{ev::SubmitEvent, prelude::*};
-use serde::{Deserialize, Serialize};
+use leptos::prelude::*;
 use wasm_bindgen::prelude::*;
+use lazy_static::lazy_static;
+
+use crate::forms::{
+    account::Account,
+    account_management::AccountManagement,
+    inventory_management::InventoryManagement,
+    menu::Menu,
+    register::Register, Form,
+};
+
 
 #[wasm_bindgen]
 extern "C" {
@@ -9,38 +17,41 @@ extern "C" {
     async fn invoke(cmd: &str, args: JsValue) -> JsValue;
 }
 
-#[derive(Serialize, Deserialize)]
-struct GreetArgs<'a> {
-    name: &'a str,
+lazy_static! {
+    pub static ref FORM: (ReadSignal<Form>, WriteSignal<Form>) = signal(Form::Register);
 }
+
+// #[derive(Serialize, Deserialize)]
+// struct GreetArgs<'a> {
+//     name: &'a str,
+// }
 
 #[component]
 pub fn App() -> impl IntoView {
-    let (name, set_name) = signal(String::new());
-    let (greet_msg, set_greet_msg) = signal(String::new());
+    let (form, _) = *FORM;
 
-    let greet = move |ev: SubmitEvent| {
-        ev.prevent_default();
-        spawn_local(async move {
-            let name = name.get_untracked();
-            if name.is_empty() {
-                return;
-            }
+    // let greet = move |ev: SubmitEvent| {
+    //     ev.prevent_default();
+    //     spawn_local(async move {
+    //         let name = name.get_untracked();
+    //         if name.is_empty() {
+    //             return;
+    //         }
 
-            let args = serde_wasm_bindgen::to_value(&GreetArgs { name: &name }).unwrap();
-            // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-            let new_msg = invoke("greet", args).await.as_string().unwrap();
-            set_greet_msg.set(new_msg);
-        });
-    };
+    //         let args = serde_wasm_bindgen::to_value(&GreetArgs { name: &name }).unwrap();
+    //         // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
+    //         let new_msg = invoke("greet", args).await.as_string().unwrap();
+    //         set_greet_msg.set(new_msg);
+    //     });
+    // };
 
     view! {
-        <div class="bg-primary">
-            <div class="row">
-                <a href="https://tauri.app" target="_blank">
-                    <img src="public/tauri.svg" class="logo tauri" alt="Tauri logo"/>
-                </a>
-            </div>
-        </div>
+        {move || match form.get() {
+            Form::Menu => view!{ <Menu/> }.into_any(),
+            Form::Register => view!{ <Register/> }.into_any(),
+            Form::Account => view!{ <Account/> }.into_any(),
+            Form::AccountManagement => view!{ <AccountManagement/> }.into_any(),
+            Form::InventoryManagement => view!{ <InventoryManagement/> }.into_any(),
+        }}
     }
 }
