@@ -1763,6 +1763,12 @@
       inset: 50% auto auto calc(var(--tt-tail) + 1px);
     }
   }
+  .top-0 {
+    top: calc(var(--spacing) * 0);
+  }
+  .left-0 {
+    left: calc(var(--spacing) * 0);
+  }
   .input {
     cursor: text;
     border: var(--border) solid #0000;
@@ -2583,6 +2589,13 @@
   .btn-success {
     --btn-color: var(--color-success);
     --btn-fg: var(--color-success-content);
+  }
+  .hover\:bg-base-300 {
+    &:hover {
+      @media (hover: hover) {
+        background-color: var(--color-base-300);
+      }
+    }
   }
 }
 @layer base {

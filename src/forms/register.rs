@@ -13,7 +13,7 @@ pub fn Register() -> impl IntoView {
         <>
             <Sidebar/>
             <div class="flex grow m-2 gap-2">
-                <div class="flex flex-col gap-2 w-1/4 h-full">
+                <div class="flex flex-col gap-2 w-1/3 h-full">
                     <div class="flex-1 bg-base-200 rounded-box">
                         hi
                     </div>
@@ -26,32 +26,224 @@ pub fn Register() -> impl IntoView {
                     <SearchBox/>
                     <div class="flex-1 bg-base-200 rounded-box w-full overflow-y-auto">
                         <table class="table">
-                            <thead>
+                            <thead class="text-lg sticky top-0 left-0 bg-base-200">
                                 <tr>
+                                    <th>PLU</th>
+                                    <th>Item</th>
+                                    <th>$</th>
                                     <th></th>
-                                    <th>Name</th>
-                                    <th>Job</th>
-                                    <th>Favorite Color</th>
                                 </tr>
                             </thead>
-                            <tbody>
-                                <tr class="bg-base-200">
-                                    <th>1</th>
-                                    <td>Cy Ganderton</td>
-                                    <td>Quality Control Specialist</td>
-                                    <td>Blue</td>
+                            <tbody class="text-xl">
+                                <tr>
+                                    <td>0001</td>
+                                    <td>Snickers</td>
+                                    <td>1.05</td>
+                                    <td class="p-1">
+                                        <button class="btn btn-base-100 p-0 w-14 h-14">
+                                            <img class="w-9" src="/public/add.svg"/>
+                                        </button>
+                                    </td>
                                 </tr>
                                 <tr>
-                                    <th>2</th>
-                                    <td>Hart Hagerty</td>
-                                    <td>Desktop Support Technician</td>
-                                    <td>Purple</td>
+                                    <td>0001</td>
+                                    <td>Snickers</td>
+                                    <td>1.05</td>
+                                    <td class="p-1">
+                                        <button class="btn btn-base-100 p-0 w-14 h-14">
+                                            <img class="w-9" src="/public/add.svg"/>
+                                        </button>
+                                    </td>
                                 </tr>
                                 <tr>
-                                    <th>3</th>
-                                    <td>Brice Swyre</td>
-                                    <td>Tax Accountant</td>
-                                    <td>Red</td>
+                                    <td>0001</td>
+                                    <td>Snickers</td>
+                                    <td>1.05</td>
+                                    <td class="p-1">
+                                        <button class="btn btn-base-100 p-0 w-14 h-14">
+                                            <img class="w-9" src="/public/add.svg"/>
+                                        </button>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>0001</td>
+                                    <td>Snickers</td>
+                                    <td>1.05</td>
+                                    <td class="p-1">
+                                        <button class="btn btn-base-100 p-0 w-14 h-14">
+                                            <img class="w-9" src="/public/add.svg"/>
+                                        </button>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>0001</td>
+                                    <td>Snickers</td>
+                                    <td>1.05</td>
+                                    <td class="p-1">
+                                        <button class="btn btn-base-100 p-0 w-14 h-14">
+                                            <img class="w-9" src="/public/add.svg"/>
+                                        </button>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>0001</td>
+                                    <td>Snickers</td>
+                                    <td>1.05</td>
+                                    <td class="p-1">
+                                        <button class="btn btn-base-100 p-0 w-14 h-14">
+                                            <img class="w-9" src="/public/add.svg"/>
+                                        </button>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>0001</td>
+                                    <td>Snickers</td>
+                                    <td>1.05</td>
+                                    <td class="p-1">
+                                        <button class="btn btn-base-100 p-0 w-14 h-14">
+                                            <img class="w-9" src="/public/add.svg"/>
+                                        </button>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>0001</td>
+                                    <td>Snickers</td>
+                                    <td>1.05</td>
+                                    <td class="p-1">
+                                        <button class="btn btn-base-100 p-0 w-14 h-14">
+                                            <img class="w-9" src="/public/add.svg"/>
+                                        </button>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>0001</td>
+                                    <td>Snickers</td>
+                                    <td>1.05</td>
+                                    <td class="p-1">
+                                        <button class="btn btn-base-100 p-0 w-14 h-14">
+                                            <img class="w-9" src="/public/add.svg"/>
+                                        </button>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>0001</td>
+                                    <td>Snickers</td>
+                                    <td>1.05</td>
+                                    <td class="p-1">
+                                        <button class="btn btn-base-100 p-0 w-14 h-14">
+                                            <img class="w-9" src="/public/add.svg"/>
+                                        </button>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>0001</td>
+                                    <td>Snickers</td>
+                                    <td>1.05</td>
+                                    <td class="p-1">
+                                        <button class="btn btn-base-100 p-0 w-14 h-14">
+                                            <img class="w-9" src="/public/add.svg"/>
+                                        </button>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>0001</td>
+                                    <td>Snickers</td>
+                                    <td>1.05</td>
+                                    <td class="p-1">
+                                        <button class="btn btn-base-100 p-0 w-14 h-14">
+                                            <img class="w-9" src="/public/add.svg"/>
+                                        </button>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>0001</td>
+                                    <td>Snickers</td>
+                                    <td>1.05</td>
+                                    <td class="p-1">
+                                        <button class="btn btn-base-100 p-0 w-14 h-14">
+                                            <img class="w-9" src="/public/add.svg"/>
+                                        </button>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>0001</td>
+                                    <td>Snickers</td>
+                                    <td>1.05</td>
+                                    <td class="p-1">
+                                        <button class="btn btn-base-100 p-0 w-14 h-14">
+                                            <img class="w-9" src="/public/add.svg"/>
+                                        </button>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>0001</td>
+                                    <td>Snickers</td>
+                                    <td>1.05</td>
+                                    <td class="p-1">
+                                        <button class="btn btn-base-100 p-0 w-14 h-14">
+                                            <img class="w-9" src="/public/add.svg"/>
+                                        </button>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>0001</td>
+                                    <td>Snickers</td>
+                                    <td>1.05</td>
+                                    <td class="p-1">
+                                        <button class="btn btn-base-100 p-0 w-14 h-14">
+                                            <img class="w-9" src="/public/add.svg"/>
+                                        </button>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>0001</td>
+                                    <td>Snickers</td>
+                                    <td>1.05</td>
+                                    <td class="p-1">
+                                        <button class="btn btn-base-100 p-0 w-14 h-14">
+                                            <img class="w-9" src="/public/add.svg"/>
+                                        </button>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>0001</td>
+                                    <td>Snickers</td>
+                                    <td>1.05</td>
+                                    <td class="p-1">
+                                        <button class="btn btn-base-100 p-0 w-14 h-14">
+                                            <img class="w-9" src="/public/add.svg"/>
+                                        </button>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>0001</td>
+                                    <td>Snickers</td>
+                                    <td>1.05</td>
+                                    <td class="p-1">
+                                        <button class="btn btn-base-100 p-0 w-14 h-14">
+                                            <img class="w-9" src="/public/add.svg"/>
+                                        </button>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>0001</td>
+                                    <td>Snickers</td>
+                                    <td>1.05</td>
+                                    <td class="p-1">
+                                        <button class="btn btn-base-100 p-0 w-14 h-14">
+                                            <img class="w-9" src="/public/add.svg"/>
+                                        </button>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>0001</td>
+                                    <td>Snickers</td>
+                                    <td>1.05</td>
+                                    <td class="p-1">
+                                        <button class="btn btn-base-100 p-0 w-14 h-14">
+                                            <img class="w-9" src="/public/add.svg"/>
+                                        </button>
+                                    </td>
                                 </tr>
                             </tbody>
                         </table>
