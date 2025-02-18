@@ -1,15 +1,11 @@
+use lazy_static::lazy_static;
 use leptos::prelude::*;
 use wasm_bindgen::prelude::*;
-use lazy_static::lazy_static;
 
 use crate::forms::{
-    account::Account,
-    account_management::AccountManagement,
-    inventory_management::InventoryManagement,
-    menu::Menu,
-    register::Register, Form,
+    account::Account, account_management::AccountManagement,
+    inventory_management::InventoryManagement, menu::Menu, register::Register, Form,
 };
-
 
 #[wasm_bindgen]
 extern "C" {
@@ -18,7 +14,7 @@ extern "C" {
 }
 
 lazy_static! {
-    pub static ref FORM: (ReadSignal<Form>, WriteSignal<Form>) = signal(Form::Register);
+    pub static ref FORM: (ReadSignal<Form>, WriteSignal<Form>) = signal(Form::Account);
 }
 
 // #[derive(Serialize, Deserialize)]
