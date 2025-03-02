@@ -44,7 +44,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "aster_dx"
+name = "aster"
 version = "0.1.0"
 dependencies = [
  "dioxus",

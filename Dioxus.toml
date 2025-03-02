@@ -3,7 +3,7 @@
 [web.app]
 
 # HTML title tag content
-title = "aster_dx"
+title = "aster"
 
 # include `assets` in web platform
 [web.resource]

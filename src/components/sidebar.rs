@@ -17,6 +17,8 @@ pub fn Sidebar(navigator: Signal<Form>) -> Element {
                     button {
                         class: "flex aspect-1/1 align-center tooltip tooltip-right btn p-0 w-14 h-14",
                         "data-tip": "Register",
+                        onclick: move |_| { navigator.set(Form::Register); },
+
                         img { src: REGISTER }
                     }
                 }
@@ -24,6 +26,8 @@ pub fn Sidebar(navigator: Signal<Form>) -> Element {
                     button {
                         class: "flex aspect-1/1 align-center tooltip tooltip-right btn p-0 w-14 h-14",
                         "data-tip": "Account",
+                        onclick: move |_| { navigator.set(Form::Account); },
+
                         img { src: ACCOUNT }
                     }
                 }
@@ -35,6 +39,8 @@ pub fn Sidebar(navigator: Signal<Form>) -> Element {
                     button {
                         class: "flex aspect-1/1 align-center tooltip tooltip-right btn p-0 w-14 h-14",
                         "data-tip": "Accounts",
+                        onclick: move |_| { navigator.set(Form::AccountManagement); },
+
                         img { src: ACCOUNTS }
                     }
                 }
@@ -42,6 +48,8 @@ pub fn Sidebar(navigator: Signal<Form>) -> Element {
                     button {
                         class: "flex aspect-1/1 align-center tooltip tooltip-right btn p-0 w-14 h-14",
                         "data-tip": "Inventory",
+                        onclick: move |_| { navigator.set(Form::InventoryManagement); },
+
                         img { src: INVENTORY }
                     }
                 }
@@ -49,6 +57,7 @@ pub fn Sidebar(navigator: Signal<Form>) -> Element {
                     button {
                         class: "flex aspect-1/1 align-center tooltip tooltip-right btn p-0 w-14 h-14",
                         "data-tip": "Settings",
+
                         img { src: BURGER }
                     }
                 }

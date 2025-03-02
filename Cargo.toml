@@ -1,5 +1,5 @@
 [package]
-name = "aster_dx"
+name = "aster"
 version = "0.1.0"
 authors = ["Matthew Bland <mabla0531@gmail.com>"]
 edition = "2021"
