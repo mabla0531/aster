@@ -1,7 +1,7 @@
 use dioxus::prelude::*;
 
 use crate::{
-    assets::{ACCOUNT, ACCOUNTS, BURGER, INVENTORY, REGISTER},
+    assets::{BALANCE, ACCOUNTS, BURGER, INVENTORY, REGISTER},
     forms::Form,
 };
 
@@ -9,7 +9,7 @@ use crate::{
 pub fn Sidebar(navigator: Signal<Form>) -> Element {
     rsx! {
         div {
-            class: "flex flex-col justify-between menu bg-base-200 rounded-box p-1 h-full",
+            class: "flex flex-col justify-between menu bg-base-200 rounded-box p-1 h-full rounded-none",
             ul {
                 class: "flex flex-col gap-1",
 
@@ -25,10 +25,10 @@ pub fn Sidebar(navigator: Signal<Form>) -> Element {
                 li {
                     button {
                         class: "flex aspect-1/1 align-center tooltip tooltip-right btn p-0 w-14 h-14",
-                        "data-tip": "Account",
-                        onclick: move |_| { navigator.set(Form::Account); },
+                        "data-tip": "Balance",
+                        onclick: move |_| { navigator.set(Form::Balance); },
 
-                        img { src: ACCOUNT }
+                        img { src: BALANCE }
                     }
                 }
             }
@@ -54,11 +54,21 @@ pub fn Sidebar(navigator: Signal<Form>) -> Element {
                     }
                 }
                 li {
-                    button {
-                        class: "flex aspect-1/1 align-center tooltip tooltip-right btn p-0 w-14 h-14",
+                    div {
+                        class: "flex aspect-1/1 align-center tooltip tooltip-right btn p-0 w-14 h-14 dropdown dropdown-right dropdown-end",
                         "data-tip": "Settings",
 
-                        img { src: BURGER }
+                        div {
+                            tabindex: "0",
+                            role: "button",
+                            img { src: BURGER }
+                        }
+                        ul {
+                            tabindex: "0",
+                            class: "dropdown-content menu bg-base-100 rounded-box z-1 w-52 p-2 shadow-sm",
+                            li { a { "Item 1" } }
+                            li { a { "Item 2" } }
+                        }
                     }
                 }
             }

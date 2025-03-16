@@ -2,23 +2,23 @@ use dioxus::prelude::*;
 
 use crate::{
     assets::*,
+    components::sidebar::Sidebar,
     forms::{
-        account::Account, account_management::AccountManagement,
-        inventory_management::InventoryManagement, menu::Menu, register::Register, Form,
+        account_management::AccountManagement, balance::Balance,
+        inventory_management::InventoryManagement, register::Register, Form,
     },
 };
 
 #[component]
 pub fn App() -> Element {
-    let navigator = use_signal(|| Form::Menu);
+    let navigator = use_signal(|| Form::Register);
 
     rsx! {
         document::Stylesheet { href: TAILWIND }
-
+        Sidebar { navigator: navigator }
         match navigator() {
-            Form::Menu => rsx! { Menu { navigator: navigator } }.into_dyn_node(),
-            Form::Register => rsx! { Register { navigator: navigator } }.into_dyn_node(),
-            Form::Account => rsx! { Account { navigator: navigator } }.into_dyn_node(),
+            Form::Register => rsx! { Register {} }.into_dyn_node(),
+            Form::Balance => rsx! { Balance {} }.into_dyn_node(),
             Form::AccountManagement => rsx! { AccountManagement {} }.into_dyn_node(),
             Form::InventoryManagement => rsx! { InventoryManagement {} }.into_dyn_node(),
         }

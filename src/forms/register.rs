@@ -1,33 +1,46 @@
+use std::collections::HashMap;
+
 use dioxus::prelude::*;
 
-use crate::{
-    assets::{ADD, REMOVE},
-    components::{searchbox::SearchBox, sidebar::Sidebar},
-};
-
-use super::Form;
+use crate::{assets::{ADD, REMOVE}, components::{misc::Divider, searchbox::SearchBox, table::Table}};
 
 #[component]
-pub fn Transaction() -> Element {
+pub fn Transaction(transaction: Signal<HashMap<u32, u32>>) -> Element {
+
+    let mut remove_item = move |plu: u32| {
+        let mut new_tx = transaction();
+        new_tx.remove(&plu);
+        transaction.set(new_tx);
+    };
+
+    let tx_pretty = || {
+        format!("{:.02}", transaction().iter().map(|(_, v)| v).sum::<u32>() as f32 / 100.0)
+    };
+
     rsx! {
         div {
-            class: "flex flex-col gap-2 w-1/3 h-full",
+            class: "flex flex-col gap-2 w-sm h-full",
             div {
                 class: "flex grow flex-col bg-base-200 rounded-box overflow-auto",
+                div {
+                    class: "text-3xl text-center my-3",
+                    "Transaction"
+                }
+                Divider {}
                 table {
                     class: "table",
                     thead {}
                     tbody {
-                        class: "text-lg",
+                        class: "text-2xl",
                         tr {
                             td { "2" }
                             td { "KitKat" }
                             td { "$2.10" }
                             td {
-                                class: "p-1",
                                 button {
+                                    onclick: move |_| remove_item(123),
                                     class: "btn btn-base-100 p-0 w-8 h-8",
-                                    img { class: "w-5", src: REMOVE }
+                                    img { class: "w-9", src: REMOVE }
                                 }
                             }
                         }
@@ -36,44 +49,43 @@ pub fn Transaction() -> Element {
             }
 
             div {
-                class: "flex justify-between p-4 bg-base-200 rounded-box text-md",
+                class: "flex justify-between p-4 bg-base-200 rounded-box text-2xl",
                 div { "Total" }
-                div { "$2.10" }
+                div { {tx_pretty()} }
             }
             div {
                 class: "flex gap-2",
-                button {
-                    class: "flex-1 btn btn-info py-8 text-base-200 text-2xl",
-                    "Charge"
-                }
-                button {
-                    class: "flex-1 btn btn-success py-8 text-base-200 text-2xl",
-                    "Cash"
-                }
+                button { class: "flex-1 btn btn-info py-8 text-base-200 text-2xl", "Charge" }
+                button { class: "flex-1 btn btn-success py-8 text-base-200 text-2xl", "Cash" }
             }
         }
     }
 }
-
 #[component]
-pub fn ItemLookup() -> Element {
+pub fn Inventory(transaction: Signal<HashMap<u32, u32>>) -> Element {
+    
+    let mut add_one_item = move |plu: u32| {
+        let mut new_tx = transaction();
+        new_tx.insert(plu, transaction().get(&plu).unwrap_or(&0) + 1);
+        transaction.set(new_tx);
+    };
+
     rsx! {
         div {
-            class: "flex-1 bg-base-200 rounded-box w-full overflow-y-auto",
-            table {
-                class: "table",
+            class: "flex flex-col grow gap-2",
+            SearchBox {}
+            Table {
                 thead {}
                 tbody {
-                    class: "text-xl",
+                    class: "text-2xl",
                     tr {
-                        td { "0001" }
-                        td { "Snickers" }
-                        td { "$1.05" }
+                        td { "2" }
+                        td { "KitKat" }
+                        td { "$2.10" }
                         td {
-                            class: "p-1",
                             button {
-                                class: "btn btn-base-100 p-0 w-14 h-14",
-
+                                onclick: move |_| add_one_item(123),
+                                class: "btn btn-base-100 p-0 w-8 h-8",
                                 img { class: "w-9", src: ADD }
                             }
                         }
@@ -85,17 +97,15 @@ pub fn ItemLookup() -> Element {
 }
 
 #[component]
-pub fn Register(navigator: Signal<Form>) -> Element {
+pub fn Register() -> Element {
+
+    let transaction: Signal<HashMap<u32, u32>> = use_signal(|| HashMap::new());
+
     rsx! {
-        Sidebar { navigator: navigator }
         div {
             class: "flex grow m-2 gap-2",
-            Transaction {}
-            div {
-                class: "flex flex-col grow gap-2",
-                SearchBox {}
-                ItemLookup {}
-            }
+            Transaction { transaction: transaction }
+            Inventory { transaction: transaction }
         }
     }
 }

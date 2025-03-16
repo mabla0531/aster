@@ -23,3 +23,7 @@ img {
     -ms-user-select: none;
     user-select: none;
 }
+
+td {
+    text-align: center;
+}

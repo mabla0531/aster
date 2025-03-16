@@ -2,7 +2,7 @@ use dioxus::prelude::*;
 
 pub static TAILWIND: Asset = asset!("/assets/tailwind.css");
 
-pub static ACCOUNT: Asset = asset!("/assets/account.svg");
+pub static BALANCE: Asset = asset!("/assets/account.svg");
 pub static ACCOUNTS: Asset = asset!("/assets/accounts.svg");
 pub static ADD: Asset = asset!("/assets/add.svg");
 pub static BURGER: Asset = asset!("/assets/burger.svg");
