@@ -53,7 +53,7 @@ pub fn Balance() -> Element {
     rsx! {
         div {
             class: "flex flex-col grow m-2 gap-2",
-            SearchBox {}
+            SearchBox { on_input: move |_| {} }
             Table {
                 
             }

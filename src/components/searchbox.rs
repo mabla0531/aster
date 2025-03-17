@@ -3,7 +3,7 @@ use dioxus::prelude::*;
 use crate::assets::SEARCH;
 
 #[component]
-pub fn SearchBox() -> Element {
+pub fn SearchBox(on_input: EventHandler<String>) -> Element {
     rsx! {
         div {
             class: "flex gap-1 bg-base-200 rounded-box p-1 w-full",
@@ -15,6 +15,7 @@ pub fn SearchBox() -> Element {
                 }
             }
             input {
+                oninput: move |e| on_input.call(e.value()),
                 type: "text",
                 class: "flex-1 p-2 text-3xl text-center rounded-box"
             }

@@ -1,4 +1,5 @@
 pub mod searchbox;
 pub mod sidebar;
 pub mod table;
-pub mod misc;
+pub mod layout;
+pub mod button;

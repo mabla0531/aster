@@ -1,11 +1,11 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
 use dioxus::prelude::*;
 
-use crate::{assets::{ADD, REMOVE}, components::{misc::Divider, searchbox::SearchBox, table::Table}};
+use crate::{assets::{ADD, REMOVE}, components::{button::RowButton, layout::Divider, searchbox::SearchBox, table::Table}, model::ItemEntry};
 
 #[component]
-pub fn Transaction(transaction: Signal<HashMap<u32, u32>>) -> Element {
+pub fn Transaction(items: Arc<HashMap<u32, ItemEntry>>, transaction: Signal<HashMap<u32, u32>>) -> Element {
 
     let mut remove_item = move |plu: u32| {
         let mut new_tx = transaction();
@@ -13,8 +13,8 @@ pub fn Transaction(transaction: Signal<HashMap<u32, u32>>) -> Element {
         transaction.set(new_tx);
     };
 
-    let tx_pretty = || {
-        format!("{:.02}", transaction().iter().map(|(_, v)| v).sum::<u32>() as f32 / 100.0)
+    let tx_total_pretty = || {
+        format!("{:.02}", transaction().iter().map(|(k, v)| items.get(k).map(|i| i.price).unwrap_or(0) * v).sum::<u32>() as f32 / 100.0)
     };
 
     rsx! {
@@ -32,18 +32,20 @@ pub fn Transaction(transaction: Signal<HashMap<u32, u32>>) -> Element {
                     thead {}
                     tbody {
                         class: "text-2xl",
-                        tr {
-                            td { "2" }
-                            td { "KitKat" }
-                            td { "$2.10" }
-                            td {
-                                button {
-                                    onclick: move |_| remove_item(123),
-                                    class: "btn btn-base-100 p-0 w-8 h-8",
-                                    img { class: "w-9", src: REMOVE }
+                        {transaction().into_iter().map(|(k, v)| {
+                            if let Some(item) = items.get(&k) {
+                                rsx! {
+                                    tr {
+                                        td { {v.to_string()} }
+                                        td { {item.name.clone()} }
+                                        td { {format!("{:.02}", (item.price * v) as f32 / 100.0)} }
+                                        td {
+                                            RowButton { onclick: move |_| remove_item(k), src: REMOVE }
+                                        }
+                                    }    
                                 }
-                            }
-                        }
+                            } else { rsx! {} }
+                        })}
                     }
                 }
             }
@@ -51,7 +53,7 @@ pub fn Transaction(transaction: Signal<HashMap<u32, u32>>) -> Element {
             div {
                 class: "flex justify-between p-4 bg-base-200 rounded-box text-2xl",
                 div { "Total" }
-                div { {tx_pretty()} }
+                div { {tx_total_pretty()} }
             }
             div {
                 class: "flex gap-2",
@@ -62,34 +64,47 @@ pub fn Transaction(transaction: Signal<HashMap<u32, u32>>) -> Element {
     }
 }
 #[component]
-pub fn Inventory(transaction: Signal<HashMap<u32, u32>>) -> Element {
-    
+pub fn Inventory(items: Arc<HashMap<u32, ItemEntry>>, transaction: Signal<HashMap<u32, u32>>) -> Element {
+    let mut search_candidate = use_signal(|| "".to_string());
+
     let mut add_one_item = move |plu: u32| {
         let mut new_tx = transaction();
         new_tx.insert(plu, transaction().get(&plu).unwrap_or(&0) + 1);
         transaction.set(new_tx);
     };
 
+    let get_relevant_candidates = || {
+        let prime_candidates = 
+            items.iter()
+            .filter(|(k, v)|
+                v.name.to_lowercase().contains(&search_candidate().to_lowercase()) ||
+                k.to_string().contains(&search_candidate()) ||
+                v.gtin.is_some_and(|g| g.to_string().contains(&search_candidate()))
+            )
+            .map(|(k, v)| (k.clone(), v.clone()));
+
+        prime_candidates.map(|(k, v)| rsx! {
+            tr {
+                td { {format!("{:04}", k)} }
+                td { {v.name.clone()} }
+                td { {format!("{:.02}", v.price as f32 / 100.0)} }
+                td { {v.gtin.map(|g| format!("{:10}", g)).unwrap_or("—".to_string())} }
+                td {
+                    RowButton {onclick: move |_| add_one_item(k), src: ADD }
+                }
+            }
+        })
+    };
+
     rsx! {
         div {
             class: "flex flex-col grow gap-2",
-            SearchBox {}
+            SearchBox { on_input: move |val| search_candidate.set(val) }
             Table {
                 thead {}
                 tbody {
                     class: "text-2xl",
-                    tr {
-                        td { "2" }
-                        td { "KitKat" }
-                        td { "$2.10" }
-                        td {
-                            button {
-                                onclick: move |_| add_one_item(123),
-                                class: "btn btn-base-100 p-0 w-8 h-8",
-                                img { class: "w-9", src: ADD }
-                            }
-                        }
-                    }
+                    {get_relevant_candidates()}
                 }
             }
         }
@@ -97,15 +112,12 @@ pub fn Inventory(transaction: Signal<HashMap<u32, u32>>) -> Element {
 }
 
 #[component]
-pub fn Register() -> Element {
-
-    let transaction: Signal<HashMap<u32, u32>> = use_signal(|| HashMap::new());
-
+pub fn Register(items: Arc<HashMap<u32, ItemEntry>>, transaction: Signal<HashMap<u32, u32>>) -> Element {
     rsx! {
         div {
             class: "flex grow m-2 gap-2",
-            Transaction { transaction: transaction }
-            Inventory { transaction: transaction }
+            Transaction { items: items.clone(), transaction: transaction }
+            Inventory { items: items.clone(), transaction: transaction }
         }
     }
 }

@@ -2,6 +2,7 @@ mod app;
 mod assets;
 mod components;
 mod forms;
+mod model;
 
 use app::App;
 use dioxus::desktop::{Config, WindowBuilder};
