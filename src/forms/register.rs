@@ -4,8 +4,14 @@ use dioxus::prelude::*;
 
 use crate::{assets::{ADD, REMOVE}, components::{button::RowButton, layout::Divider, searchbox::SearchBox, table::Table}, model::ItemEntry};
 
+pub enum PurchaseType {
+    None,
+    Charge,
+    Cash,
+}
+
 #[component]
-pub fn Transaction(items: Arc<HashMap<u32, ItemEntry>>, transaction: Signal<HashMap<u32, u32>>) -> Element {
+pub fn Transaction(items: Arc<HashMap<u32, ItemEntry>>, transaction: Signal<HashMap<u32, u32>>, purchase_invocation: Signal<PurchaseType>) -> Element {
 
     let mut remove_item = move |plu: u32| {
         let mut new_tx = transaction();
@@ -22,10 +28,7 @@ pub fn Transaction(items: Arc<HashMap<u32, ItemEntry>>, transaction: Signal<Hash
             class: "flex flex-col gap-2 w-sm h-full",
             div {
                 class: "flex grow flex-col bg-base-200 rounded-box overflow-auto",
-                div {
-                    class: "text-3xl text-center my-3",
-                    "Transaction"
-                }
+                div { class: "text-3xl text-center my-3", "Transaction" }
                 Divider {}
                 table {
                     class: "table",
@@ -42,7 +45,7 @@ pub fn Transaction(items: Arc<HashMap<u32, ItemEntry>>, transaction: Signal<Hash
                                         td {
                                             RowButton { onclick: move |_| remove_item(k), src: REMOVE }
                                         }
-                                    }    
+                                    }
                                 }
                             } else { rsx! {} }
                         })}
@@ -57,8 +60,16 @@ pub fn Transaction(items: Arc<HashMap<u32, ItemEntry>>, transaction: Signal<Hash
             }
             div {
                 class: "flex gap-2",
-                button { class: "flex-1 btn btn-info py-8 text-base-200 text-2xl", "Charge" }
-                button { class: "flex-1 btn btn-success py-8 text-base-200 text-2xl", "Cash" }
+                button { 
+                    class: "flex-1 btn btn-info py-8 text-base-200 text-2xl", 
+                    onclick: move |_| {purchase_invocation.set(PurchaseType::Charge)},
+                    "Charge" 
+                }
+                button { 
+                    class: "flex-1 btn btn-success py-8 text-base-200 text-2xl", 
+                    onclick: move |_| {purchase_invocation.set(PurchaseType::Cash)},
+                    "Cash" 
+                }
             }
         }
     }
@@ -113,11 +124,41 @@ pub fn Inventory(items: Arc<HashMap<u32, ItemEntry>>, transaction: Signal<HashMa
 
 #[component]
 pub fn Register(items: Arc<HashMap<u32, ItemEntry>>, transaction: Signal<HashMap<u32, u32>>) -> Element {
+    let purchase_invocation = use_signal(|| PurchaseType::None);
+    
     rsx! {
         div {
             class: "flex grow m-2 gap-2",
-            Transaction { items: items.clone(), transaction: transaction }
+            Transaction { items: items.clone(), transaction: transaction, purchase_invocation: purchase_invocation }
             Inventory { items: items.clone(), transaction: transaction }
+            {match *(purchase_invocation.read()) {
+                PurchaseType::Charge => rsx! { ChargeConfirm {} },
+                PurchaseType::Cash => rsx! { CashConfirm {} },
+                PurchaseType::None => rsx! {},
+            }}
         }
+    }
+}
+
+#[component]
+pub fn CashConfirm() -> Element {
+    rsx! {
+        div {
+            class: "absolute top-0 left-0 flex justify-center items-center w-screen h-screen bg-white/30 backdrop-blur-md",
+            div {
+                class: "card w-96 bg-base-100 shadow-sm",
+                div {
+                    class: "card-body",
+                    "goobulatorizer"
+                }
+            }
+        }
+    }
+}
+
+#[component]
+pub fn ChargeConfirm() -> Element {
+    rsx! {
+
     }
 }

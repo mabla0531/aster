@@ -6,13 +6,18 @@ mod model;
 
 use app::App;
 use dioxus::desktop::{Config, WindowBuilder};
+use model::{BackendMessage, FrontendMessage, RootContext};
+use tokio::{runtime::Runtime, sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender}};
 
-fn backend() {
+async fn backend(btf_tx: UnboundedSender<FrontendMessage>, ftb_rx: UnboundedReceiver<BackendMessage>) {
     
 }
 
 fn main() {
-    std::thread::spawn(backend);
+    let (ftb_tx, ftb_rx) = unbounded_channel();
+    let (btf_tx, btf_rx) = unbounded_channel();
+
+    Runtime::new().expect("Cannot start tokio runtime").spawn(async move { backend(btf_tx, ftb_rx) });
 
     dioxus::LaunchBuilder::new()
     .with_cfg(
@@ -22,5 +27,6 @@ fn main() {
                 .with_title("Aster 0.1"),
         ),
     )
+    .with_context(RootContext { ftb_tx, btf_rx: btf_rx.into() })
     .launch(App);
 }
