@@ -17,7 +17,7 @@ pub fn SearchBox(on_input: EventHandler<String>) -> Element {
             input {
                 oninput: move |e| on_input.call(e.value()),
                 type: "text",
-                class: "flex-1 p-2 text-3xl text-center rounded-box"
+                class: "border-2 border-solid border-base-200 flex-1 p-2 text-3xl text-center rounded-box"
             }
         }
     }

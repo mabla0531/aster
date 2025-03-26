@@ -10,3 +10,4 @@ pub static INVENTORY: Asset = asset!("/assets/inventory.svg");
 pub static REGISTER: Asset = asset!("/assets/register.svg");
 pub static REMOVE: Asset = asset!("/assets/remove.svg");
 pub static SEARCH: Asset = asset!("/assets/search.svg");
+pub static BACK: Asset = asset!("/assets/back.svg");

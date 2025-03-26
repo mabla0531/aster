@@ -37,7 +37,7 @@ pub fn Modification() -> Element {
             class: "flex flex-col gap-2",
             div {
                 class: "bg-base-200 rounded-box w-full",
-                input { class: "w-full text-2xl p-2 text-center", type: "text", value: "$100.00" }
+                input { class: "border-2 border-solid border-base-200 w-full text-2xl p-2 text-center", type: "text", value: "$100.00" }
             }
             div {
                 class: "flex gap-2",
