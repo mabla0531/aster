@@ -1,8 +1,8 @@
 use crate::{database, model::{TxEntry, TxStatus}};
 
-pub fn handle_cash(tx_id: u32, total: u32, items: Vec<TxEntry>) -> TxStatus {
+pub async fn handle_cash(tx_id: u32, total: u32, items: Vec<TxEntry>) -> TxStatus {
     //   - nothing extra needed
-    match database::query_items(items) {
+    match database::query_items(items).await {
         Ok(items) => {
             let items_total = items.iter().map(|item| item.price * item.quantity).sum::<u32>();
             let difference = total - items_total;
