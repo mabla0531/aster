@@ -12,7 +12,7 @@ pub enum TransactionMethod {
 pub struct TransactionRequestBody {
     pub tx_id: u32,
     pub total: u32,
-    pub items: Vec<TxEntry>,
+    pub items: Vec<TxItem>,
     pub method: TransactionMethod,
 }
 
@@ -35,12 +35,21 @@ pub struct TransactionResponseBody {
     pub message: String,
 }
 
-#[derive(Clone, Copy, Debug, Deserialize)]
-pub struct TxEntry {
+#[derive(Clone, Debug, Deserialize)]
+pub struct Item {
+    pub id: u32,
+    pub name: String,
+    pub gtin: Option<u32>,
+    pub price: u32,
+}
+
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+pub struct TxItem {
     pub id: u32,
     pub quantity: u32,
 }
 
+#[derive(Clone, Debug, Serialize, PartialEq)]
 pub enum TxStatus {
     Partial {
         remaining: u32,
@@ -70,4 +79,28 @@ impl Into<TransactionResponseBody> for TxStatus {
             }
         }
     }
+}
+
+#[derive(Clone, Debug, Serialize)]
+pub struct Account {
+    pub id: u32,
+    pub name: String,
+    pub credit: u32,
+    pub overdraft: bool,
+    pub discount: u32,
+    pub bunk: u32,
+}
+
+#[derive(Clone, Debug, Serialize)]
+pub struct Transaction {
+    pub id: u32,
+    pub items: Vec<TxItem>,
+    pub cash_back: u32,
+}
+
+#[derive(Clone, Debug, Serialize)]
+pub struct PartialTransaction {
+    pub id: u32,
+    pub items: Vec<TxItem>,
+    pub cash_back: u32,
 }

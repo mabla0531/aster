@@ -16,8 +16,8 @@ pub async fn transaction(Json(payload): Json<TransactionRequestBody>) -> Json<Tr
     } = payload;
 
     let result = match method {
-        TransactionMethod::Cash => handle_cash(tx_id, total, items),
-        TransactionMethod::Credit { account_id } => handle_credit(tx_id, total, items, account_id),
+        TransactionMethod::Cash => handle_cash(tx_id, total, items).await,
+        TransactionMethod::Credit { account_id } => handle_credit(tx_id, items, account_id).await,
     };
 
     Json(result.into())

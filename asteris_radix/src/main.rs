@@ -1,9 +1,12 @@
 mod database;
-mod server;
 mod model;
+mod server;
 mod transaction;
 
-use axum::{routing::{get, post}, Router};
+use axum::{
+    routing::{get, post},
+    Router,
+};
 use clap::{arg, command, Parser};
 
 #[derive(Parser, Debug)]
@@ -29,13 +32,14 @@ async fn handle_args(args: Args) {
 
 #[tokio::main]
 async fn main() {
-
     handle_args(Args::parse()).await;
 
     let router = Router::new()
         .route("/", get(server::default))
         .route("/transaction", post(server::transaction));
 
-    let listener = tokio::net::TcpListener::bind(("0.0.0.0", 5555)).await.unwrap();
+    let listener = tokio::net::TcpListener::bind(("0.0.0.0", 5555))
+        .await
+        .unwrap();
     axum::serve(listener, router).await.unwrap();
 }
