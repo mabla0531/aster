@@ -8,7 +8,8 @@ use crate::{
     forms::{
         account_management::AccountManagement, balance::Balance,
         inventory_management::InventoryManagement, register::Register, Form,
-    }, model::ItemEntry,
+    },
+    model::ItemDetails,
 };
 
 #[component]
@@ -18,39 +19,39 @@ pub fn App() -> Element {
     let mut items = HashMap::new();
 
     items.insert(
-        0001, 
-        ItemEntry {
+        0001,
+        ItemDetails {
             gtin: None,
             name: "KitKat".to_string(),
-            price: 200
-        }
+            price: 200,
+        },
     );
 
     items.insert(
-        0002, 
-        ItemEntry {
+        0002,
+        ItemDetails {
             gtin: None,
             name: "Beef Jerky".to_string(),
-            price: 1200
-        }
+            price: 1200,
+        },
     );
 
     items.insert(
-        0003, 
-        ItemEntry {
+        0003,
+        ItemDetails {
             gtin: None,
             name: "Goober".to_string(),
-            price: 300
-        }
+            price: 300,
+        },
     );
 
     items.insert(
-        0004, 
-        ItemEntry {
+        0004,
+        ItemDetails {
             gtin: Some(1234567890),
             name: "Candle".to_string(),
-            price: 1500
-        }
+            price: 1500,
+        },
     );
 
     rsx! {

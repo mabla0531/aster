@@ -5,7 +5,7 @@ use dioxus::prelude::*;
 use crate::{
     assets::{ADD, BACK, REMOVE},
     components::{button::RowButton, layout::Divider, searchbox::SearchBox, table::Table},
-    model::ItemEntry,
+    model::ItemDetails,
 };
 
 #[derive(PartialEq)]
@@ -17,7 +17,7 @@ pub enum PurchaseType {
 
 #[component]
 pub fn Transaction(
-    items: Arc<HashMap<u32, ItemEntry>>,
+    items: Arc<HashMap<u32, ItemDetails>>,
     transaction: Signal<HashMap<u32, u32>>,
     purchase_invocation: Signal<PurchaseType>,
 ) -> Element {
@@ -91,7 +91,7 @@ pub fn Transaction(
 }
 #[component]
 pub fn Inventory(
-    items: Arc<HashMap<u32, ItemEntry>>,
+    items: Arc<HashMap<u32, ItemDetails>>,
     transaction: Signal<HashMap<u32, u32>>,
 ) -> Element {
     let mut search_candidate = use_signal(|| "".to_string());
@@ -147,10 +147,10 @@ pub fn Inventory(
 
 #[component]
 pub fn Register(
-    items: Arc<HashMap<u32, ItemEntry>>,
+    items: Arc<HashMap<u32, ItemDetails>>,
     transaction: Signal<HashMap<u32, u32>>,
 ) -> Element {
-    let mut purchase_invocation = use_signal(|| PurchaseType::None);
+    let purchase_invocation = use_signal(|| PurchaseType::None);
 
     let tx_total = || {
         transaction()
@@ -175,27 +175,29 @@ pub fn Register(
 
 #[component]
 pub fn CashConfirm(total: u32, purchase_invocation: Signal<PurchaseType>) -> Element {
-
     let mut custom_cash = use_signal(|| false);
     let mut custom_cash_amount = use_signal(|| "".to_string());
     let mut custom_cash_status = use_signal(|| "Enter Amount...".to_string());
     let mut confirm_custom = use_signal(|| None);
 
-    let handle_payment = move |amount: u32| {
-
-    };
+    let handle_payment = move |amount: u32| {};
 
     let mut check_custom = move || {
         let amount = custom_cash_amount();
-        let sides: Vec<String> = amount.split(".").map(|chunk| format!("{:0>1}", chunk)).collect();
-        if sides.len() == 2 { // try as float
+        let sides: Vec<String> = amount
+            .split(".")
+            .map(|chunk| format!("{:0>1}", chunk))
+            .collect();
+        if sides.len() == 2 {
+            // try as float
             if let Ok(dollars) = sides[0].parse::<u32>() {
                 if let Ok(cents) = format!("{:.2}", sides[1]).parse::<u32>() {
                     confirm_custom.set(Some((dollars * 100) + cents));
                     return;
                 }
             }
-        } else if sides.len() < 2 { // try as u32
+        } else if sides.len() < 2 {
+            // try as u32
             if let Ok(total) = sides[0].parse() {
                 confirm_custom.set(Some(total));
                 return;
@@ -208,7 +210,7 @@ pub fn CashConfirm(total: u32, purchase_invocation: Signal<PurchaseType>) -> Ele
     };
 
     let handle_back = move |_| {
-        if custom_cash() { 
+        if custom_cash() {
             custom_cash.set(false);
         } else {
             purchase_invocation.set(PurchaseType::None);

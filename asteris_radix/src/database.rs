@@ -1,10 +1,10 @@
 use std::{collections::HashMap, sync::LazyLock};
 
-use rusqlite::{fallible_iterator::FallibleIterator, Connection, Rows};
+use rusqlite::{fallible_iterator::FallibleIterator, Rows};
 use thiserror::Error;
 use tokio::sync::Mutex;
 
-use crate::model::{Account, Item, Transaction, TxItem};
+use crate::model::{Account, Transaction, TxItem};
 
 pub static DB: LazyLock<Mutex<rusqlite::Connection>> = LazyLock::new(|| {
     if let Ok(c) = rusqlite::Connection::open("transactions.db") {
@@ -14,9 +14,14 @@ pub static DB: LazyLock<Mutex<rusqlite::Connection>> = LazyLock::new(|| {
     }
 });
 
-#[derive(Debug, Clone, Error)]
+#[derive(Debug, Error)]
 pub enum DBError {
-    
+    #[error("Unable to find transaction with ID {0}")]
+    NoTransactionFound(u32),
+    #[error("Internal DB Error: {0}")]
+    Internal(#[from] rusqlite::Error),
+    #[error("Unable to ser/des data to/from JSON: {0}")]
+    JsonFormatError(#[from] serde_json::Error)
 }
 
 pub async fn wipe() {
@@ -90,16 +95,20 @@ pub async fn get_transaction_by_id(id: u32) -> Result<Transaction, DBError> {
     let mut statement = connection.prepare("SELECT * FROM TransactionHistory WHERE TX_ID = (?1)")?;
     let rows = statement.query([id])?;
 
-    transaction_from_rows(rows)?.first().ok_or(|_| DBError::NoTransactionsFound)
+    transaction_from_rows(rows)?.first().ok_or(DBError::NoTransactionFound(id)).cloned()
 }
 
 pub fn transaction_from_rows(rows: Rows<'_>) -> Result<Vec<Transaction>, DBError> {
-    rows.map(|row| {
-        let id: u32 = row.get(0)?;
-        let items: String = row.get(1)?;
-        let cash_back: u32 = row.get(2)?;
-        Ok(Transaction {
-            id, items: serde_json::from_str(&items)?, cash_back
+    let result: Vec<Transaction> = rows.map(|row| {
+            let id: u32 = row.get(0)?;
+            let items: String = row.get(1)?;
+            let cash_back: u32 = row.get(2)?;
+            Ok((id, items, cash_back))
         })
-    }).collect()?
+        .collect::<Vec<(u32, String, u32)>>()?
+        .iter()
+        .filter_map(|(id, items, cash_back)| serde_json::from_str(items).ok().map(|items| Transaction { id: *id, items, cash_back: *cash_back }))
+        .collect();
+
+    Ok(result)
 }
