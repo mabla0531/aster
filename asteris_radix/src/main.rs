@@ -2,6 +2,7 @@ mod database;
 mod model;
 mod server;
 mod transaction;
+mod queries;
 
 use axum::{
     routing::{get, post},
@@ -16,7 +17,9 @@ struct Args {
     wipe: bool,
 }
 
-async fn handle_args(args: Args) {
+async fn handle_args() {
+    let args = Args::parse();
+
     if args.wipe {
         print!("This will wipe all accounts, items, logs, the database and reinitialize everything, it should only be used to start COMPLETELY OVER.\n\nPlease type exactly \"Kill all data\" (without the quotes) to confirm: ");
         let mut input = String::new();
@@ -32,7 +35,7 @@ async fn handle_args(args: Args) {
 
 #[tokio::main]
 async fn main() {
-    handle_args(Args::parse()).await;
+    handle_args().await;
 
     let router = Router::new()
         .route("/", get(server::default))
