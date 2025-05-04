@@ -1,0 +1,69 @@
+use serde::{Deserialize, Serialize};
+use utoipa::ToSchema;
+
+#[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
+pub enum TransactionMethod {
+    Cash,
+    Credit {
+        account_id: u32,
+    }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
+pub struct TransactionRequest {
+    pub tx_id: u32,
+    pub total: u32,
+    pub items: Vec<TxEntry>,
+    pub method: TransactionMethod,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, ToSchema, PartialEq)]
+pub enum TransactionStatus {
+    Success {
+        cash_back: u32,
+    },
+    Partial {
+        remaining: u32,
+    },
+    Failure {
+        reason: String,
+    },
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
+pub struct Item {
+    pub id: u32,
+    pub name: String,
+    pub gtin: Option<u32>,
+    pub price: u32,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
+pub struct TxEntry {
+    pub id: u32,
+    pub quantity: u32,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
+pub struct Account {
+    pub id: u32,
+    pub name: String,
+    pub credit: u32,
+    pub overdraft: bool,
+    pub discount: u32,
+    pub bunk: u32,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
+pub struct CompletedTransaction {
+    pub id: u32,
+    pub items: Vec<TxEntry>,
+    pub cash_back: u32,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
+pub struct PartialTransaction {
+    pub id: u32,
+    pub items: Vec<TxEntry>,
+    pub cash_back: u32,
+}
