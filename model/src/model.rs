@@ -4,9 +4,7 @@ use utoipa::ToSchema;
 #[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
 pub enum TransactionMethod {
     Cash,
-    Credit {
-        account_id: u32,
-    }
+    Credit { account_id: u32 },
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
@@ -19,18 +17,13 @@ pub struct TransactionRequest {
 
 #[derive(Clone, Debug, Serialize, Deserialize, ToSchema, PartialEq)]
 pub enum TransactionStatus {
-    Success {
-        cash_back: u32,
-    },
-    Partial {
-        remaining: u32,
-    },
-    Failure {
-        reason: String,
-    },
+    Success { cash_back: u32 },
+    Partial { remaining: u32 },
+    InvalidAccount { account_id: u32 },
+    Failure { reason: String },
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
+#[derive(Clone, Debug, Serialize, Deserialize, ToSchema, PartialEq, Eq)]
 pub struct Item {
     pub id: u32,
     pub name: String,

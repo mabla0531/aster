@@ -1,8 +1,7 @@
-mod database;
-mod model;
-mod server;
-mod transaction;
-mod queries;
+pub mod database;
+pub mod model;
+pub mod server;
+pub mod transaction;
 
 use clap::{arg, command, Parser};
 use utoipa::OpenApi;
@@ -39,7 +38,9 @@ struct ApiDoc;
 
 #[tokio::main]
 async fn main() {
-    database::init().await.expect("Failed to initialize database");
+    database::init()
+        .await
+        .expect("Failed to initialize database");
 
     handle_args().await;
 
@@ -52,12 +53,14 @@ async fn main() {
         .routes(routes!(sync))
         .split_for_parts();
 
-    let app = axum::Router::new()
-        .merge(router)
-        .merge(utoipa_swagger_ui::SwaggerUi::new("/swagger-ui").url("/openapi.json", ApiDoc::openapi()));
+    let app = axum::Router::new().merge(router).merge(
+        utoipa_swagger_ui::SwaggerUi::new("/swagger-ui").url("/openapi.json", ApiDoc::openapi()),
+    );
 
     let listener = tokio::net::TcpListener::bind(("0.0.0.0", 5555))
         .await
         .unwrap();
-    axum::serve(listener, app.into_make_service()).await.unwrap();
+    axum::serve(listener, app.into_make_service())
+        .await
+        .unwrap();
 }

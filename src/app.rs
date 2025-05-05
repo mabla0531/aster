@@ -1,6 +1,7 @@
-use std::{collections::HashMap, sync::Arc};
+use std::collections::HashMap;
 
 use dioxus::prelude::*;
+use model::Item;
 
 use crate::{
     assets::*,
@@ -9,56 +10,39 @@ use crate::{
         account_management::AccountManagement, balance::Balance,
         inventory_management::InventoryManagement, register::Register, Form,
     },
-    model::ItemDetails,
 };
 
 #[component]
 pub fn App() -> Element {
+    use_context_provider(|| None as Option<HashMap<u32, Item>>);
+    spawn(async move {
+        loop {
+            if let Ok(items) = reqwest::get("http://localhost:5555/sync").await {
+                let res = Some(
+                    items
+                        .json::<Vec<model::Item>>()
+                        .await
+                        .expect("Got malformed pricebook contents from radix")
+                        .into_iter()
+                        .map(|i| (i.id, i))
+                        .collect::<HashMap<u32, Item>>(),
+                );
+
+                println!("Got response from backend, setting context");
+
+                use_context_provider(|| res);
+                break;
+            };
+        }
+    });
+
     let navigator = use_signal(|| Form::Register);
-
-    let mut items = HashMap::new();
-
-    items.insert(
-        0001,
-        ItemDetails {
-            gtin: None,
-            name: "KitKat".to_string(),
-            price: 200,
-        },
-    );
-
-    items.insert(
-        0002,
-        ItemDetails {
-            gtin: None,
-            name: "Beef Jerky".to_string(),
-            price: 1200,
-        },
-    );
-
-    items.insert(
-        0003,
-        ItemDetails {
-            gtin: None,
-            name: "Goober".to_string(),
-            price: 300,
-        },
-    );
-
-    items.insert(
-        0004,
-        ItemDetails {
-            gtin: Some(1234567890),
-            name: "Candle".to_string(),
-            price: 1500,
-        },
-    );
 
     rsx! {
         document::Stylesheet { href: TAILWIND }
         Sidebar { navigator: navigator }
         match navigator() {
-            Form::Register => rsx! { Register { items: Arc::new(items), transaction: use_signal(|| HashMap::new()) } }.into_dyn_node(),
+            Form::Register => rsx! { Register { transaction: use_signal(|| HashMap::new()) } }.into_dyn_node(),
             Form::Balance => rsx! { Balance {} }.into_dyn_node(),
             Form::AccountManagement => rsx! { AccountManagement {} }.into_dyn_node(),
             Form::InventoryManagement => rsx! { InventoryManagement {} }.into_dyn_node(),

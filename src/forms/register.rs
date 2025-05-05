@@ -1,11 +1,11 @@
-use std::{collections::HashMap, sync::Arc};
+use std::collections::HashMap;
 
 use dioxus::prelude::*;
+use model::Item;
 
 use crate::{
     assets::{ADD, BACK, REMOVE},
     components::{button::RowButton, layout::Divider, searchbox::SearchBox, table::Table},
-    model::ItemDetails,
 };
 
 #[derive(PartialEq)]
@@ -17,10 +17,11 @@ pub enum PurchaseType {
 
 #[component]
 pub fn Transaction(
-    items: Arc<HashMap<u32, ItemDetails>>,
     transaction: Signal<HashMap<u32, u32>>,
     purchase_invocation: Signal<PurchaseType>,
 ) -> Element {
+    let items = use_context::<Option<HashMap<u32, Item>>>();
+
     let mut remove_item = move |plu: u32| {
         let mut new_tx = transaction();
         new_tx.remove(&plu);
@@ -90,10 +91,9 @@ pub fn Transaction(
     }
 }
 #[component]
-pub fn Inventory(
-    items: Arc<HashMap<u32, ItemDetails>>,
-    transaction: Signal<HashMap<u32, u32>>,
-) -> Element {
+pub fn Inventory(transaction: Signal<HashMap<u32, u32>>) -> Element {
+    let items = use_context::<Option<HashMap<u32, Item>>>();
+
     let mut search_candidate = use_signal(|| "".to_string());
 
     let mut add_one_item = move |plu: u32| {
@@ -146,30 +146,40 @@ pub fn Inventory(
 }
 
 #[component]
-pub fn Register(
-    items: Arc<HashMap<u32, ItemDetails>>,
-    transaction: Signal<HashMap<u32, u32>>,
-) -> Element {
+pub fn Register(transaction: Signal<HashMap<u32, u32>>) -> Element {
+    let items = use_context::<Option<HashMap<u32, Item>>>();
     let purchase_invocation = use_signal(|| PurchaseType::None);
 
-    let tx_total = || {
-        transaction()
+    let tx_total = || match items {
+        Some(items) => transaction()
             .iter()
             .map(|(k, v)| items.get(k).map(|i| i.price).unwrap_or(0) * v)
-            .sum::<u32>()
+            .sum::<u32>(),
+        None => 0,
     };
 
     rsx! {
         div {
             class: format!("flex grow m-2 gap-2 {}", if !purchase_invocation.read().eq(&PurchaseType::None) { "blur-sm" } else { "" }),
-            Transaction { items: items.clone(), transaction: transaction, purchase_invocation: purchase_invocation }
-            Inventory { items: items.clone(), transaction: transaction }
+            Transaction { transaction: transaction, purchase_invocation: purchase_invocation }
+            Inventory { transaction: transaction }
         }
         {match *(purchase_invocation.read()) {
             PurchaseType::Charge => rsx! { ChargeConfirm {} },
             PurchaseType::Cash => rsx! { CashConfirm { total: tx_total(), purchase_invocation: purchase_invocation } },
             PurchaseType::None => rsx! {},
         }}
+        {if items.is_none() {
+            rsx! {
+                div {
+                    class: "absolute top-0 left-0 flex justify-center items-center w-screen h-screen",
+                    div {
+                        class: "card w-108 bg-base-100 shadow-sm",
+                        "Pricebook not loaded"
+                    }
+                }
+            }
+        } else { rsx! {} }}
     }
 }
 

@@ -1,7 +1,7 @@
 use std::{collections::HashMap, sync::LazyLock};
-use crate::{model::TxEntry, queries::*, transaction};
+use crate::model::TxEntry;
 
-use rusqlite::{fallible_iterator::FallibleIterator, Params, Row, Rows};
+use rusqlite::{fallible_iterator::FallibleIterator, Row};
 use thiserror::Error;
 use tokio::sync::Mutex;
 
@@ -33,10 +33,30 @@ pub async fn wipe() {
 
 pub async fn init() -> Result<(), DBError> {
     let connection = DB.lock().await;
-    connection.execute(CREATE_PRICEBOOK, [])?;
-    connection.execute(CREATE_PARTIAL_TRANSACTIONS, [])?;
-    connection.execute(CREATE_TRANSACTIONLOGS, [])?;
-    connection.execute(CREATE_ACCOUNTS, [])?;
+    connection.execute("CREATE TABLE IF NOT EXISTS Pricebook (
+        id INTEGER PRIMARY KEY,
+        name TEXT NOT NULL,
+        gtin INTEGER,
+        price INTEGER NOT NULL
+    )", [])?;
+    connection.execute("CREATE TABLE IF NOT EXISTS PartialTransactions (
+        id INTEGER PRIMARY KEY,
+        items JSON,
+        remaining INTEGER NOT NULL
+    )", [])?;
+    connection.execute("CREATE TABLE IF NOT EXISTS TransactionHistory (
+        id INTEGER PRIMARY KEY,
+        items JSON,
+        cash_back INTEGER NOT NULL
+    )", [])?;
+    connection.execute("CREATE TABLE IF NOT EXISTS Accounts (
+        id INTEGER PRIMARY KEY,
+        name TEXT NOT NULL,
+        credit INTEGER NOT NULL,
+        overdraft INTEGER NOT NULL,
+        discount INTEGER NOT NULL,
+        bunk INTEGER NOT NULL
+    )", [])?;
     Ok(())
 }
 
