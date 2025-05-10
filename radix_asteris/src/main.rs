@@ -1,5 +1,4 @@
 pub mod database;
-pub mod model;
 pub mod server;
 pub mod transaction;
 
@@ -23,7 +22,7 @@ async fn handle_args() {
         print!("This will wipe all accounts, items, logs, the database and reinitialize everything, it should only be used to start COMPLETELY OVER.\n\nPlease type exactly \"Kill all data\" (without the quotes) to confirm: ");
         let mut input = String::new();
         std::io::stdin().read_line(&mut input).unwrap();
-        if input == "Kill all data" {
+        if input.trim_end() == "Kill all data" {
             println!("Wiping database...");
             database::wipe().await;
         } else {

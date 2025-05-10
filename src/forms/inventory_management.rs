@@ -1,9 +1,14 @@
+
+use std::{collections::HashMap, sync::Arc};
+
 use dioxus::prelude::*;
+use model::Item;
 
 use crate::components::{searchbox::SearchBox, table::Table};
 
 #[component]
-pub fn InventoryManagement() -> Element {
+pub fn InventoryManagement(pricebook: Arc<HashMap<u32, Item>>) -> Element {
+    
     rsx! {
         div {
             class: "flex flex-col grow m-2 gap-2",

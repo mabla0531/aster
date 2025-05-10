@@ -1,15 +1,14 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
 use dioxus::prelude::*;
-use model::Item;
+use model::{Item, TransactionMethod, TransactionRequest};
 
 use crate::{
-    assets::{ADD, BACK, REMOVE},
-    components::{button::RowButton, layout::Divider, searchbox::SearchBox, table::Table},
+    assets::{ADD, BACK, REMOVE}, components::{button::RowButton, layout::Divider, searchbox::SearchBox, table::Table}
 };
 
 #[derive(PartialEq)]
-pub enum PurchaseType {
+pub enum PurchaseStage {
     None,
     Charge,
     Cash,
@@ -17,11 +16,10 @@ pub enum PurchaseType {
 
 #[component]
 pub fn Transaction(
+    pricebook: Arc<HashMap<u32, Item>>,
     transaction: Signal<HashMap<u32, u32>>,
-    purchase_invocation: Signal<PurchaseType>,
+    purchase_stage: Signal<PurchaseStage>,
 ) -> Element {
-    let items = use_context::<Option<HashMap<u32, Item>>>();
-
     let mut remove_item = move |plu: u32| {
         let mut new_tx = transaction();
         new_tx.remove(&plu);
@@ -29,14 +27,34 @@ pub fn Transaction(
     };
 
     let tx_total_pretty = || {
-        format!(
-            "{:.02}",
-            transaction()
-                .iter()
-                .map(|(k, v)| items.get(k).map(|i| i.price).unwrap_or(0) * v)
-                .sum::<u32>() as f32
-                / 100.0
-        )
+        let total = transaction()
+            .iter()
+            .map(|(k, v)| pricebook.get(k).map(|i| i.price).unwrap_or(0) * v)
+            .sum::<u32>() as f32
+            / 100.0;
+
+        format!("{:.02}", total)
+    };
+
+    let tx_item_row = |item: &Item, id: u32, qty: u32| {
+        rsx! {
+            tr {
+                td { {qty.to_string()} }
+                td { {item.name.clone()} }
+                td { {format!("{:.02}", (item.price * qty) as f32 / 100.0)} }
+                td {
+                    RowButton { onclick: move |_| remove_item(id), src: REMOVE }
+                }
+            }
+        }
+    };
+
+    let tx_items = || {
+        rsx! {
+            {transaction().into_iter().map(|(k, v)| {
+                pricebook.get(&k).map(|i| tx_item_row(i, k, v)).unwrap_or(rsx!{})
+            })}
+        }
     };
 
     rsx! {
@@ -51,20 +69,7 @@ pub fn Transaction(
                     thead {}
                     tbody {
                         class: "text-2xl",
-                        {transaction().into_iter().map(|(k, v)| {
-                            if let Some(item) = items.get(&k) {
-                                rsx! {
-                                    tr {
-                                        td { {v.to_string()} }
-                                        td { {item.name.clone()} }
-                                        td { {format!("{:.02}", (item.price * v) as f32 / 100.0)} }
-                                        td {
-                                            RowButton { onclick: move |_| remove_item(k), src: REMOVE }
-                                        }
-                                    }
-                                }
-                            } else { rsx! {} }
-                        })}
+                        {tx_items()}
                     }
                 }
             }
@@ -78,12 +83,12 @@ pub fn Transaction(
                 class: "flex gap-2",
                 button {
                     class: "flex-1 btn btn-info py-8 text-base-200 text-2xl",
-                    onclick: move |_| {purchase_invocation.set(PurchaseType::Charge)},
+                    onclick: move |_| {purchase_stage.set(PurchaseStage::Charge)},
                     "Charge"
                 }
                 button {
                     class: "flex-1 btn btn-success py-8 text-base-200 text-2xl",
-                    onclick: move |_| {purchase_invocation.set(PurchaseType::Cash)},
+                    onclick: move |_| {purchase_stage.set(PurchaseStage::Cash)},
                     "Cash"
                 }
             }
@@ -91,9 +96,7 @@ pub fn Transaction(
     }
 }
 #[component]
-pub fn Inventory(transaction: Signal<HashMap<u32, u32>>) -> Element {
-    let items = use_context::<Option<HashMap<u32, Item>>>();
-
+pub fn Inventory(pricebook: Arc<HashMap<u32, Item>>, transaction: Signal<HashMap<u32, u32>>) -> Element {
     let mut search_candidate = use_signal(|| "".to_string());
 
     let mut add_one_item = move |plu: u32| {
@@ -103,7 +106,7 @@ pub fn Inventory(transaction: Signal<HashMap<u32, u32>>) -> Element {
     };
 
     let get_relevant_candidates = || {
-        let prime_candidates = items
+        let items = pricebook
             .iter()
             .filter(|(k, v)| {
                 v.name
@@ -113,21 +116,21 @@ pub fn Inventory(transaction: Signal<HashMap<u32, u32>>) -> Element {
                     || v.gtin
                         .is_some_and(|g| g.to_string().contains(&search_candidate()))
             })
-            .map(|(k, v)| (k.clone(), v.clone()));
-
-        prime_candidates.map(|(k, v)| {
-            rsx! {
-                tr {
-                    td { {format!("{:04}", k)} }
-                    td { {v.name.clone()} }
-                    td { {format!("{:.02}", v.price as f32 / 100.0)} }
-                    td { {v.gtin.map(|g| format!("{:10}", g)).unwrap_or("—".to_string())} }
-                    td {
-                        RowButton {onclick: move |_| add_one_item(k), src: ADD }
+            .map(|(k, v)| (k.clone(), v.clone())) // imagine there's a .cloned() here
+            .map(|(k, v)| {
+                rsx! {
+                    tr {
+                        td { {format!("{:04}", k)} }
+                        td { {v.name.clone()} }
+                        td { {format!("{:.02}", v.price as f32 / 100.0)} }
+                        td { {v.gtin.map(|g| format!("{:10}", g)).unwrap_or("—".to_string())} }
+                        td {
+                            RowButton {onclick: move |_| add_one_item(k.clone()), src: ADD }
+                        }
                     }
                 }
-            }
-        })
+            });
+            rsx! {{items}}
     };
 
     rsx! {
@@ -146,85 +149,153 @@ pub fn Inventory(transaction: Signal<HashMap<u32, u32>>) -> Element {
 }
 
 #[component]
-pub fn Register(transaction: Signal<HashMap<u32, u32>>) -> Element {
-    let items = use_context::<Option<HashMap<u32, Item>>>();
-    let purchase_invocation = use_signal(|| PurchaseType::None);
+pub fn Register(pricebook: Arc<HashMap<u32, Item>>, transaction: Signal<HashMap<u32, u32>>) -> Element {
+    let purchase_stage = use_signal(|| PurchaseStage::None);
 
-    let tx_total = || match items {
-        Some(items) => transaction()
+    let tx_total = || {        
+        transaction()
             .iter()
-            .map(|(k, v)| items.get(k).map(|i| i.price).unwrap_or(0) * v)
-            .sum::<u32>(),
-        None => 0,
+            .map(|(k, v)| pricebook.get(k).map(|i| i.price).unwrap_or(0) * v)
+            .sum::<u32>()
     };
 
     rsx! {
         div {
-            class: format!("flex grow m-2 gap-2 {}", if !purchase_invocation.read().eq(&PurchaseType::None) { "blur-sm" } else { "" }),
-            Transaction { transaction: transaction, purchase_invocation: purchase_invocation }
-            Inventory { transaction: transaction }
+            class: format!("flex grow m-2 gap-2 {}", if !purchase_stage.read().eq(&PurchaseStage::None) { "blur-sm" } else { "" }),
+            Transaction { pricebook: pricebook.clone(), transaction, purchase_stage }
+            Inventory { pricebook: pricebook.clone(), transaction }
         }
-        {match *(purchase_invocation.read()) {
-            PurchaseType::Charge => rsx! { ChargeConfirm {} },
-            PurchaseType::Cash => rsx! { CashConfirm { total: tx_total(), purchase_invocation: purchase_invocation } },
-            PurchaseType::None => rsx! {},
-        }}
-        {if items.is_none() {
-            rsx! {
-                div {
-                    class: "absolute top-0 left-0 flex justify-center items-center w-screen h-screen",
-                    div {
-                        class: "card w-108 bg-base-100 shadow-sm",
-                        "Pricebook not loaded"
-                    }
-                }
+        
+        Payment { total: tx_total(), purchase_stage }
+    }
+}
+
+pub async fn dispatch_transaction(transaction_request: TransactionRequest) {
+    crate::CLIENT
+        .post("http://localhost:5555/transaction")
+        .json(&transaction_request)
+        .send()
+        .await
+        .expect("Failed to send transaction");
+}
+
+pub fn parse_custom_cash(input_amount: String) -> Result<u32, ()> {
+    let sides: Vec<String> = input_amount
+        .split(".")
+        .map(|chunk| format!("{:0>1}", chunk))
+        .collect();
+
+    // sides cannot be > 2, e.g. 2.00.30
+
+    if sides.len() == 2 {
+        // try as float
+        if let Ok(dollars) = sides[0].parse::<u32>() {
+            if let Ok(cents) = format!("{:.2}", sides[1]).parse::<u32>() {
+                return Ok(dollars * 100 + cents);
             }
-        } else { rsx! {} }}
+        }
+    } else if sides.len() < 2 {
+        // try as u32
+        if let Ok(total) = sides[0].parse() {
+            return Ok(total);
+        }
+    }
+
+    Err(())
+}
+
+#[component]
+pub fn PaymentTitle(title: &'static str, purchase_stage: Signal<PurchaseStage>) -> Element {
+    rsx! {
+        div {
+            class: "card-title flex w-full px-6 pt-6",
+            button {
+                class: "btn btn-ghost btn-square",
+                onclick: move |_| purchase_stage.set(PurchaseStage::None),
+                img { class: "w-9 h-9", src: BACK }
+            }
+            div { class: "mx-auto text-2xl", {title} }
+            div { class: "w-10" }
+        }
     }
 }
 
 #[component]
-pub fn CashConfirm(total: u32, purchase_invocation: Signal<PurchaseType>) -> Element {
-    let mut custom_cash = use_signal(|| false);
-    let mut custom_cash_amount = use_signal(|| "".to_string());
-    let mut custom_cash_status = use_signal(|| "Enter Amount...".to_string());
-    let mut confirm_custom = use_signal(|| None);
+pub fn PaymentCharge() -> Element {
+    rsx! {
+        
+    }
+}
 
-    let handle_payment = move |amount: u32| {};
+pub enum CashStage {
+    Selection,
+    Custom,
+    Confirmation { amount: u32 },
+    CashBack { amount: u32 }
+}
 
-    let mut check_custom = move || {
-        let amount = custom_cash_amount();
-        let sides: Vec<String> = amount
-            .split(".")
-            .map(|chunk| format!("{:0>1}", chunk))
-            .collect();
-        if sides.len() == 2 {
-            // try as float
-            if let Ok(dollars) = sides[0].parse::<u32>() {
-                if let Ok(cents) = format!("{:.2}", sides[1]).parse::<u32>() {
-                    confirm_custom.set(Some((dollars * 100) + cents));
-                    return;
+#[component]
+pub fn PaymentCash() -> Element {
+    let mut cash_stage = use_signal(|| CashStage::Selection);
+    let mut custom_amount: Signal<Option<u32>> = use_signal(|| None);
+    let mut cash_back: Signal<Option<u32>> = use_signal(|| None);
+
+    rsx! {
+        {match *cash_stage.read() {
+            CashStage::Selection => {
+                rsx! {
+                    button { class: "grow btn btn-square btn-success btn-lg", onclick: move |_| cash_stage.set(CashStage::Confirmation { amount: 500 }), "$5" }
+                    button { class: "grow btn btn-square btn-success btn-lg", onclick: move |_| cash_stage.set(CashStage::Confirmation { amount: 1000 }), "$10" }
+                    button { class: "grow btn btn-square btn-success btn-lg", onclick: move |_| cash_stage.set(CashStage::Confirmation { amount: 2000 }), "$20" }
+                    button { class: "grow btn btn-square btn-info btn-lg", onclick: move |_| cash_stage.set(CashStage::Custom), "..." }
+                }
+            },
+            CashStage::Custom => {
+                rsx! {
+                    input { class: "grow text-xl text-center border border-gray-400 rounded-sm", oninput: move |val| custom_amount.set(parse_custom_cash(val.data().value()).ok()) }
+                    button { class: "grow btn btn-square btn-success btn-lg", onclick: move |_| cash_stage.set(CashStage::Confirmation { amount: custom_amount().unwrap_or(0) }), "Confirm" }
+                }
+            },
+            CashStage::Confirmation { amount } => {
+                rsx! {
+                    div {
+                        class: "grow text-xl",
+                        {format!("Amount: ${:.2}", amount as f32 / 100.0)}
+                    }
+                    button { 
+                        class: "grow btn btn-square btn-success btn-lg", 
+                        onclick: move |_| dispatch_transaction(
+                            TransactionRequest {
+                                tender: amount,
+                                items: vec![],
+                                method: TransactionMethod::Cash,
+                            },
+                            transaction,
+                        ),
+                        "Finalize"
+                    }
+                }
+            },
+            CashStage::CashBack { amount } => {
+                rsx! {
+
                 }
             }
-        } else if sides.len() < 2 {
-            // try as u32
-            if let Ok(total) = sides[0].parse() {
-                confirm_custom.set(Some(total));
-                return;
-            }
-        }
+        }}
+    }
+}
 
-        // malformed
-        custom_cash_amount.set("".to_string());
-        custom_cash_status.set("Please enter total again".to_string());
-    };
 
-    let handle_back = move |_| {
-        if custom_cash() {
-            custom_cash.set(false);
-        } else {
-            purchase_invocation.set(PurchaseType::None);
-        }
+#[component]
+pub fn Payment(total: u32, purchase_stage: Signal<PurchaseStage>) -> Element {
+    if *purchase_stage.read() == PurchaseStage::None {
+        return rsx! {};
+    }
+    
+    let (title, inner) = match *purchase_stage.read() {
+        PurchaseStage::Charge => ("Account", rsx! { PaymentCharge {} }),
+        PurchaseStage::Cash => ("Cash", rsx! { PaymentCash {} }),
+        _ => return rsx! {},
     };
 
     rsx! {
@@ -232,78 +303,16 @@ pub fn CashConfirm(total: u32, purchase_invocation: Signal<PurchaseType>) -> Ele
             class: "absolute top-0 left-0 flex justify-center items-center w-screen h-screen",
             div {
                 class: "card w-108 bg-base-100 shadow-sm",
-                div {
-                    class: "card-title flex w-full px-6 pt-6", // padding on body top is chonky already
-                    button {
-                        class: "btn btn-ghost btn-square",
-                        onclick: handle_back,
-                        img { class: "w-9 h-9", src: BACK }
-                    }
-                    div { class: "mx-auto text-2xl", "Cash Amount" }
-                    div { class: "w-10" } // spacer so Cash Amount is centered despite the button
-                }
+                PaymentTitle { title, purchase_stage }
                 div {
                     class: "card-body flex flex-col gap-6",
-                    div { class: "text-xl", {format!("Total: ${:?}", total as f32 / 100.0)} }
-                    {if custom_cash() {
-                        rsx! {
-                            div {
-                                class: "flex gap-6",
-                                input {
-                                    type: "text",
-                                    class: "border-2 border-solid border-base-200 text-xl rounded-box p-2 w-0 h-auto grow",
-                                    placeholder: custom_cash_status(),
-                                    value: custom_cash_amount(),
-                                    oninput: move |e| {
-                                        custom_cash_amount.set(e.value());
-                                    },
-                                    onkeypress: move |e| {
-                                        if e.key() == Key::Enter {
-                                            check_custom();
-                                        }
-                                    },
-                                }
-                                button {
-                                    class: "btn btn-success text-lg py-6",
-                                    onclick: move |_| check_custom(),
-                                    "Confirm"
-                                }
-                            }
-                        }
-                    } else {
-                        rsx! {
-                            div {
-                                class: "flex justify-between gap-2",
-                                button {
-                                    class: "flex-1 btn btn-success text-base-200 py-6 text-xl",
-                                    onclick: move |_| handle_payment(20),
-                                    "$20"
-                                }
-                                button {
-                                    class: "flex-1 btn btn-success text-base-200 py-6 text-xl",
-                                    onclick: move |_| handle_payment(10),
-                                    "$10"
-                                }
-                                button {
-                                    class: "flex-1 btn btn-success text-base-200 py-6 text-xl",
-                                    onclick: move |_| handle_payment(5),
-                                    "$5"
-                                }
-                                button {
-                                    class: "flex-1 btn btn-success text-base-200 py-6 text-xl",
-                                    onclick: move |_| custom_cash.set(true),
-                                    "..."
-                                }
-                            }
-                        }
-                    }}
+                    div { class: "text-xl", {format!("Total: ${:.2}", total as f32 / 100.0)} }
+                    div {
+                        class: "flex gap-2",
+                        {inner}
+                    }
                 }
             }
         }
     }
-}
-
-#[component]
-pub fn ChargeConfirm() -> Element {
-    rsx! {}
 }

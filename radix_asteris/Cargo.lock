@@ -775,6 +775,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "model"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "utoipa",
+]
+
+[[package]]
 name = "object"
 version = "0.36.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -866,6 +874,7 @@ version = "0.1.0"
 dependencies = [
  "axum",
  "clap",
+ "model",
  "rusqlite",
  "serde",
  "serde_json",

@@ -1,11 +1,11 @@
 use std::{collections::HashMap, sync::LazyLock};
-use crate::model::TxEntry;
+use model::TxEntry;
 
 use rusqlite::{fallible_iterator::FallibleIterator, Row};
 use thiserror::Error;
 use tokio::sync::Mutex;
 
-use crate::model::{Account, Item, CompletedTransaction};
+use model::{Account, Item, CompletedTransaction};
 
 pub static DB: LazyLock<Mutex<rusqlite::Connection>> = LazyLock::new(|| {
     if let Ok(c) = rusqlite::Connection::open("radix_asteris.db") {

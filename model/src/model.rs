@@ -9,8 +9,7 @@ pub enum TransactionMethod {
 
 #[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
 pub struct TransactionRequest {
-    pub tx_id: u32,
-    pub total: u32,
+    pub tender: u32,
     pub items: Vec<TxEntry>,
     pub method: TransactionMethod,
 }
@@ -49,7 +48,6 @@ pub struct Account {
 
 #[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
 pub struct CompletedTransaction {
-    pub id: u32,
     pub items: Vec<TxEntry>,
     pub cash_back: u32,
 }
