@@ -40,12 +40,12 @@ pub async fn init() -> Result<(), DBError> {
         price INTEGER NOT NULL
     )", [])?;
     connection.execute("CREATE TABLE IF NOT EXISTS PartialTransactions (
-        id INTEGER PRIMARY KEY,
+        id TEXT PRIMARY KEY,
         items JSON,
         remaining INTEGER NOT NULL
     )", [])?;
     connection.execute("CREATE TABLE IF NOT EXISTS TransactionHistory (
-        id INTEGER PRIMARY KEY,
+        id TEXT PRIMARY KEY,
         items JSON,
         cash_back INTEGER NOT NULL
     )", [])?;
@@ -100,7 +100,7 @@ pub async fn get_prices(items: Vec<u32>) -> Result<HashMap<u32, u32>, DBError> {
     Ok(prices)
 }
 
-pub async fn create_partial_transaction(tx_id: u32, items: HashMap<u32, u32>, difference: u32) -> Result<(), DBError> {
+pub async fn create_partial_transaction(tx_id: String, items: HashMap<u32, u32>, difference: u32) -> Result<(), DBError> {
     generic_exec(
         &format!(
             "INSERT INTO PartialTransactions (id, items, remaining) VALUES ({}, '{}', {})", 
@@ -112,7 +112,7 @@ pub async fn create_partial_transaction(tx_id: u32, items: HashMap<u32, u32>, di
     Ok(())
 }
 
-pub async fn log_transaction(tx_id: u32, items: HashMap<u32, u32>, cash_back: u32) -> Result<(), DBError> {
+pub async fn log_transaction(tx_id: String, items: HashMap<u32, u32>, cash_back: u32) -> Result<(), DBError> {
     let items_vec = items.iter().map(|(&k, &v)| TxEntry { id: k, quantity: v}).collect::<Vec<_>>();
     generic_exec(
         &format!(
@@ -140,7 +140,7 @@ pub async fn get_all_transactions() -> Result<Vec<CompletedTransaction>, DBError
     let transactions = generic_query(
         "SELECT * FROM TransactionHistory",
         |row| {
-            let id: u32 = row.get(0)?;
+            let id: String = row.get(0)?;
             let items: String = row.get(1)?;
             let cash_back: u32 = row.get(2)?;
             Ok((id, items, cash_back))
@@ -151,7 +151,7 @@ pub async fn get_all_transactions() -> Result<Vec<CompletedTransaction>, DBError
         .iter()
         .filter_map(|(id, items, cash_back)| 
             serde_json::from_str(items)
-                .map(|items| CompletedTransaction { id: *id, items, cash_back: *cash_back })
+                .map(|items| CompletedTransaction { id: id.clone(), items, cash_back: *cash_back })
                 .ok()
         )
         .collect();
@@ -163,7 +163,7 @@ pub async fn get_transaction(id: u32) -> Result<CompletedTransaction, DBError> {
     let transactions = generic_query(
         &format!("SELECT * FROM TransactionHistory WHERE id = {}", id),
         |row| {
-            let id: u32 = row.get(0)?;
+            let id: String = row.get(0)?;
             let items: String = row.get(1)?;
             let cash_back: u32 = row.get(2)?;
             Ok((id, items, cash_back))

@@ -4,7 +4,7 @@ use crate::database;
 use model::TransactionStatus;
 
 pub async fn handle_cash(
-    tx_id: u32,
+    tx_id: String,
     cash_amount: u32,
     items: HashMap<u32, u32>,
 ) -> Result<TransactionStatus, String> {
@@ -47,7 +47,7 @@ pub async fn handle_cash(
 }
 
 pub async fn handle_credit(
-    tx_id: u32,
+    tx_id: String,
     account_id: u32,
     items: HashMap<u32, u32>,
 ) -> Result<TransactionStatus, String> {

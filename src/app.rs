@@ -47,14 +47,11 @@ pub fn App() -> Element {
     let pricebook = pricebook.read();
     if pricebook.is_some() {
         let pb = Arc::new(pricebook.clone().unwrap());
-        // this rerender should only happen a single time due to dioxus's signal system "allegedly" "matching that of React". 
-        // we will see:
-        println!("rerender of App component");
         rsx! {
             document::Stylesheet { href: TAILWIND }
             Sidebar { navigator }
             {match navigator() {
-                Form::Register => rsx! { Register { pricebook: pb, transaction: use_signal(|| HashMap::new()) } },
+                Form::Register => rsx! { Register { pricebook: pb } },
                 Form::Balance => rsx! { Balance {} },
                 Form::AccountManagement => rsx! { AccountManagement {} },
                 Form::InventoryManagement => rsx! { InventoryManagement { pricebook: pb } },
