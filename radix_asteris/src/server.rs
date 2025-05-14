@@ -5,7 +5,7 @@ use model::{Account, Item, TransactionMethod, TransactionRequest, TransactionSta
 
 use crate::{
     database,
-    transaction::{handle_cash, handle_credit},
+    transaction::{calc_total, handle_cash, handle_credit},
 };
 
 pub static AUTH_KEY: LazyLock<&str> = LazyLock::new(|| include_str!("../../.env").trim());
@@ -36,6 +36,8 @@ pub async fn transaction(
     headers: HeaderMap,
     Json(payload): Json<TransactionRequest>,
 ) -> Result<Json<TransactionStatus>, String> {
+    println!("Transaction request: {:?}", payload);
+
     if check_auth(headers) == false {
         return Err("Unauthorized".to_string());
     }
@@ -48,10 +50,11 @@ pub async fn transaction(
     } = payload;
 
     let items: HashMap<u32, u32> = items.iter().map(|item| (item.id, item.quantity)).collect();
+    let total = calc_total(tx_id.clone(), items.clone()).await?;
 
     let result = match method {
-        TransactionMethod::Cash => handle_cash(tx_id, tender, items).await,
-        TransactionMethod::Credit { account_id } => handle_credit(tx_id, account_id, items).await,
+        TransactionMethod::Cash => handle_cash(tx_id, tender, items, total).await,
+        TransactionMethod::Credit { account_id } => handle_credit(tx_id, account_id, items, total).await,
     };
 
     result.map(|r| Json(r))
@@ -69,6 +72,8 @@ pub async fn transaction(
     ),
 )]
 pub async fn get_accounts(headers: HeaderMap) -> Result<Json<Vec<Account>>, String> {
+    println!("Get accounts request");
+
     if check_auth(headers) == false {
         return Err("Unauthorized".to_string());
     }
@@ -94,6 +99,8 @@ pub async fn get_account(
     headers: HeaderMap,
     Path(account_id): Path<u32>,
 ) -> Result<Json<Account>, String> {
+    println!("Get account request for account_id: {}", account_id);
+
     if check_auth(headers) == false {
         return Err("Unauthorized".to_string());
     }
@@ -119,6 +126,8 @@ pub async fn insert_account(
     headers: HeaderMap,
     Json(payload): Json<Account>,
 ) -> Result<Json<String>, String> {
+    println!("Insert account request: {:?}", payload);
+
     if check_auth(headers) == false {
         return Err("Unauthorized".to_string());
     }
@@ -141,6 +150,8 @@ pub async fn insert_account(
     ),
 )]
 pub async fn sync(headers: HeaderMap) -> Result<Json<Vec<Item>>, String> {
+    println!("Sync request");
+    
     if check_auth(headers) == false {
         return Err("Unauthorized".to_string());
     }
@@ -152,14 +163,5 @@ pub async fn sync(headers: HeaderMap) -> Result<Json<Vec<Item>>, String> {
 }
 
 pub fn check_auth(headers: HeaderMap) -> bool {
-    match headers.get("x-auth-token") {
-        Some(val) => {
-            if val.to_str().unwrap_or_default() != *AUTH_KEY {
-                false
-            } else {
-                true
-            }
-        }
-        None => false,
-    }
+    headers.get("x-auth-token").map(|val| val.to_str().unwrap_or_default() == *AUTH_KEY).unwrap_or(false)
 }

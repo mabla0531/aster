@@ -1,6 +1,6 @@
 use std::{collections::HashMap, sync::Arc};
 
-use dioxus::{html::link::r#as, prelude::*};
+use dioxus::prelude::*;
 use model::{Item, TransactionMethod, TransactionRequest, TransactionStatus, TxEntry};
 use uuid::Uuid;
 
@@ -9,10 +9,11 @@ use crate::{
     components::{button::RowButton, layout::Divider, searchbox::SearchBox, table::Table},
 };
 
-pub static transaction: GlobalSignal<TransactionState> = GlobalSignal::new(|| TransactionState::new());
+static TRANSACTION_STATE: GlobalSignal<TransactionState> = GlobalSignal::new(|| TransactionState::new());
 
 #[derive(Clone)]
 struct TransactionState {
+    tx_id: String,
     items: HashMap<u32, u32>,
     remaining_amount: Option<u32>,
 }
@@ -20,13 +21,10 @@ struct TransactionState {
 impl TransactionState {
     fn new() -> Self {
         Self {
+            tx_id: Uuid::new_v4().to_string(),
             items: HashMap::new(),
             remaining_amount: None,
         }
-    }
-
-    fn get_remaining(&self) -> Option<u32> {
-        self.remaining_amount
     }
 }
 
@@ -43,16 +41,16 @@ pub fn Transaction(
     purchase_stage: Signal<PurchaseStage>,
 ) -> Element {
     let remove_item = move |plu: u32| {
-        let mut new_tx = transaction().clone();
+        let mut new_tx = TRANSACTION_STATE().clone();
         new_tx.items.remove(&plu);
-        transaction.signal().set(new_tx);
+        TRANSACTION_STATE.signal().set(new_tx);
     };
 
     let tx_total_pretty = format!("{:.02}", 
-        transaction()
-            .get_remaining()
+        TRANSACTION_STATE()
+            .remaining_amount
             .unwrap_or(
-                transaction()
+                TRANSACTION_STATE()
                     .items
                     .iter()
                     .map(|(k, v)| pricebook.get(k).map(|i| i.price).unwrap_or(0) * v)
@@ -61,7 +59,7 @@ pub fn Transaction(
             / 100.0
     );
 
-    let tx_item_row = |item: &Item, id: u32, qty: u32| {
+    let tx_item_row_as_element = |item: &Item, id: u32, qty: u32| {
         rsx! {
             tr {
                 td { {qty.to_string()} }
@@ -74,10 +72,10 @@ pub fn Transaction(
         }
     };
 
-    let tx_items = || {
+    let tx_items_as_elements = || {
         rsx! {
-            {transaction().clone().items.into_iter().map(|(k, v)| {
-                pricebook.get(&k).map(|i| tx_item_row(i, k, v)).unwrap_or(rsx!{})
+            {TRANSACTION_STATE().clone().items.into_iter().map(|(k, v)| {
+                pricebook.get(&k).map(|i| tx_item_row_as_element(i, k, v)).unwrap_or(rsx!{})
             })}
         }
     };
@@ -94,7 +92,7 @@ pub fn Transaction(
                     thead {}
                     tbody {
                         class: "text-2xl",
-                        {tx_items()}
+                        {tx_items_as_elements()}
                     }
                 }
             }
@@ -108,12 +106,12 @@ pub fn Transaction(
                 class: "flex gap-2",
                 button {
                     class: "flex-1 btn btn-info py-8 text-base-200 text-2xl",
-                    onclick: move |_| {purchase_stage.set(PurchaseStage::Charge)},
+                    onclick: move |_| {if TRANSACTION_STATE().items.len() > 0 { purchase_stage.set(PurchaseStage::Charge) }},
                     "Charge"
                 }
                 button {
                     class: "flex-1 btn btn-success py-8 text-base-200 text-2xl",
-                    onclick: move |_| {purchase_stage.set(PurchaseStage::Cash)},
+                    onclick: move |_| {if TRANSACTION_STATE().items.len() > 0 { purchase_stage.set(PurchaseStage::Cash) }},
                     "Cash"
                 }
             }
@@ -127,9 +125,9 @@ pub fn Inventory(
     let mut search_candidate = use_signal(|| "".to_string());
 
     let add_one_item = move |plu: u32| {
-        let mut new_tx = transaction();
-        new_tx.items.insert(plu, transaction().items.get(&plu).unwrap_or(&0) + 1);
-        transaction.signal().set(new_tx);
+        let mut new_tx = TRANSACTION_STATE();
+        new_tx.items.insert(plu, TRANSACTION_STATE().items.get(&plu).unwrap_or(&0) + 1);
+        TRANSACTION_STATE.signal().set(new_tx);
     };
 
     let get_relevant_candidates = || {
@@ -181,10 +179,10 @@ pub fn Register(
 ) -> Element {
     let purchase_stage = use_signal(|| PurchaseStage::None);
 
-    let tx_total = transaction()
-        .get_remaining()
+    let tx_total = TRANSACTION_STATE()
+        .remaining_amount
         .unwrap_or(
-            transaction()
+            TRANSACTION_STATE()
             .items
             .iter()
             .map(|(k, v)| pricebook.get(k).map(|i| i.price).unwrap_or(0) * v)
@@ -211,9 +209,15 @@ pub async fn dispatch_transaction(
         .send()
         .await
     {
-        Ok(res) => match res.json::<TransactionStatus>().await {
-            Ok(res) => return Some(res),
-            Err(e) => println!("Error parsing tx response: {:?}", e),
+        Ok(res) => {
+            if res.status() == 200 {
+                match res.json::<TransactionStatus>().await {
+                    Ok(res) => return Some(res),
+                    Err(e) => println!("Error parsing tx response: {:?}", e),
+                }
+            } else if res.status() == 500 {
+                println!("Error code 500 returned for tx request: {:?}", res.text().await);
+            }
         },
         Err(e) => println!("Error sending tx request: {:?}", e),
     };
@@ -280,15 +284,54 @@ pub fn PaymentCash(purchase_stage: Signal<PurchaseStage>) -> Element {
     let mut cash_stage = use_signal(|| CashStage::Selection { info: None });
     let mut custom_amount: Signal<Option<u32>> = use_signal(|| None);
 
+    let finalize = move |amount: u32| async move {
+        match dispatch_transaction(
+            TransactionRequest {
+                tx_id: TRANSACTION_STATE().tx_id,
+                tender: amount,
+                items: TRANSACTION_STATE().items.iter().map(|(&k, &v)| TxEntry { id: k, quantity: v }).collect(),
+                method: TransactionMethod::Cash,
+            }
+        ).await {
+            Some(tx_res) => {
+                match tx_res {
+                    TransactionStatus::Success { cash_back } => {
+                        TRANSACTION_STATE.signal().set(TransactionState::new());
+                        cash_stage.set(CashStage::CashBack { amount: cash_back });
+                    },
+                    TransactionStatus::Failure { reason } => {
+                        cash_stage.set(CashStage::Selection { info: Some(reason) })
+                    },
+                    TransactionStatus::Partial { remaining } => {
+                        TRANSACTION_STATE.signal().write().remaining_amount = Some(remaining);
+                        cash_stage.set(CashStage::Selection { info: None });
+                    },
+                    TransactionStatus::InvalidAccount { .. } => {
+                        cash_stage.set(CashStage::Selection { info: Some("How tf did you pass an account in a cash transaction bruh 😭😭".to_string()) })
+                    }
+                }
+            },
+            None => {
+                cash_stage.set(CashStage::Selection { info: Some("An error occurred. Please try again or notify a manager.".to_string()) })
+            }
+        }
+    };
+
     rsx! {
         {match cash_stage.read().clone() {
             CashStage::Selection { info } => {
                 rsx! {
-                    {if let Some(info) = info { rsx! { div { class: "text-xs color-red-100", {info} } } } else { rsx! {} }}
-                    button { class: "grow btn btn-square btn-success btn-lg", onclick: move |_| cash_stage.set(CashStage::Confirmation { amount: 500 }), "$5" }
-                    button { class: "grow btn btn-square btn-success btn-lg", onclick: move |_| cash_stage.set(CashStage::Confirmation { amount: 1000 }), "$10" }
-                    button { class: "grow btn btn-square btn-success btn-lg", onclick: move |_| cash_stage.set(CashStage::Confirmation { amount: 2000 }), "$20" }
-                    button { class: "grow btn btn-square btn-info btn-lg", onclick: move |_| cash_stage.set(CashStage::Custom), "..." }
+                    div {
+                        class: "flex flex-col w-full gap-2",
+                        {if let Some(info) = info { rsx! { div { class: "text-sm text-red-300", {info} } } } else { rsx! {} }}
+                        div {
+                            class: "flex gap-2",
+                            button { class: "grow btn btn-square btn-success btn-lg", onclick: move |_| cash_stage.set(CashStage::Confirmation { amount: 500 }), "$5" }
+                            button { class: "grow btn btn-square btn-success btn-lg", onclick: move |_| cash_stage.set(CashStage::Confirmation { amount: 1000 }), "$10" }
+                            button { class: "grow btn btn-square btn-success btn-lg", onclick: move |_| cash_stage.set(CashStage::Confirmation { amount: 2000 }), "$20" }
+                            button { class: "grow btn btn-square btn-info btn-lg", onclick: move |_| cash_stage.set(CashStage::Custom), "..." }
+                        }
+                    }
                 }
             },
             CashStage::Custom => {
@@ -305,38 +348,7 @@ pub fn PaymentCash(purchase_stage: Signal<PurchaseStage>) -> Element {
                     }
                     button {
                         class: "grow btn btn-square btn-success btn-lg",
-                        onclick: move |_| async move {
-                            match dispatch_transaction(
-                                TransactionRequest {
-                                    tx_id: Uuid::new_v4().to_string(),
-                                    tender: amount,
-                                    items: transaction().items.iter().map(|(&k, &v)| TxEntry { id: k, quantity: v }).collect(),
-                                    method: TransactionMethod::Cash,
-                                }
-                            ).await {
-                                Some(tx_res) => {
-                                    match tx_res {
-                                        TransactionStatus::Success { cash_back } => {
-                                            transaction.signal().set(TransactionState::new());
-                                            cash_stage.set(CashStage::CashBack { amount: cash_back });
-                                        },
-                                        TransactionStatus::Failure { reason } => {
-                                            cash_stage.set(CashStage::Selection { info: Some(reason) })
-                                        },
-                                        TransactionStatus::Partial { remaining } => {
-                                            transaction.signal().set(TransactionState { items: transaction().clone().items, remaining_amount: Some(remaining) });
-                                            cash_stage.set(CashStage::Selection { info: None });
-                                        },
-                                        TransactionStatus::InvalidAccount { .. } => {
-                                            cash_stage.set(CashStage::Selection { info: Some("How tf did you pass an account in a cash transaction bruh 😭😭".to_string()) })
-                                        }
-                                    }
-                                },
-                                None => {
-                                    cash_stage.set(CashStage::Selection { info: Some("An error occurred. Please try again or notify a manager.".to_string()) })
-                                }
-                            }
-                        },
+                        onclick: move |_| finalize(amount),
                         "Finalize"
                     }
                 }

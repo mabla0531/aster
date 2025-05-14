@@ -2,11 +2,15 @@ pub mod database;
 pub mod server;
 pub mod transaction;
 
+use std::io::Write;
+
 use clap::{arg, command, Parser};
 use utoipa::OpenApi;
 use utoipa_axum::{router::OpenApiRouter, routes};
 
 use server::*;
+
+use colored::Colorize;
 
 #[derive(Parser, Debug)]
 #[command(version, about)]
@@ -35,8 +39,7 @@ async fn handle_args() {
 #[openapi(paths(default, transaction, get_accounts, get_account, insert_account, sync))]
 struct ApiDoc;
 
-#[tokio::main]
-async fn main() {
+pub async fn start_server() {
     database::init()
         .await
         .expect("Failed to initialize database");
@@ -62,4 +65,51 @@ async fn main() {
     axum::serve(listener, app.into_make_service())
         .await
         .unwrap();
+}
+
+pub fn sql_console() {
+    println!("SQL console is not implemented yet.");
+}
+
+pub fn realtime_log() {
+    println!("Real-time log is not implemented yet.");
+}
+
+#[tokio::main]
+async fn main() {
+    tokio::spawn(start_server());
+
+    loop {
+        print!(
+            "{}{}{} ",
+            "⚘".purple(),
+            " aster 0.1 ".blue(),
+            ""
+        );
+        std::io::stdout().flush().unwrap();
+        let mut input = String::new();
+        std::io::stdin().read_line(&mut input).unwrap();
+
+        match input.trim() {
+            "sql" => {
+                sql_console();
+            }
+            "log" => {
+                realtime_log();
+            }
+            "swag" => {
+                let _ = open::that("http://localhost:5555/swagger-ui");
+            }
+            "exit" => {
+                println!("Exiting...");
+                break;
+            }
+            "help" => {
+                println!("Available commands:\n\nsql | execute SQL query on db\nlog | enter realtime log mode\nswag | open swaggerui page\nexit | Exits the application\nhelp | Prints this message");
+            }
+            _ => {
+                println!("Unknown command: {}", input.trim());
+            }
+        }
+    }
 }
