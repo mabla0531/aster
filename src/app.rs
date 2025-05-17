@@ -1,7 +1,7 @@
 use std::{collections::HashMap, sync::Arc, time::Duration};
 
 use dioxus::prelude::*;
-use model::Item;
+use model::{Account, Item, SyncState};
 
 use crate::{
     assets::*,
@@ -12,27 +12,37 @@ use crate::{
     },
 };
 
+#[derive(Clone)]
+struct State {
+    pricebook: HashMap<u32, Item>,
+    accounts: HashMap<u32, Account>,
+}
 
 #[component]
 pub fn App() -> Element {
-
-    let mut pricebook: Signal<Option<HashMap<u32, Item>>> = use_signal(|| None);
+    let mut state: Signal<Option<State>> = use_signal(|| None);
 
     // this sucks, I'm aware. I'm lazy and don't want to deal with useState magic especially in a mimicking language
-    if pricebook.read().is_none() {
+    if state.read().is_none() {
         spawn(async move {
             loop {
                 println!("Querying backend for pricebook...");
                 if let Ok(response) = crate::CLIENT.get("http://localhost:5555/sync").send().await {
-                    let items = response
-                        .json::<Vec<model::Item>>()
+                    let sync_state = response
+                        .json::<SyncState>()
                         .await
-                        .expect("Got malformed pricebook contents from Radix")
-                        .into_iter()
+                        .expect("Got malformed state contents from Radix");
+                    let pricebook = sync_state.pricebook.into_iter()
                         .map(|i| (i.id, i))
                         .collect::<HashMap<u32, Item>>();
-
-                    pricebook.set(Some(items));
+                    let accounts = sync_state.accounts.into_iter()
+                        .map(|a| (a.id, a))
+                        .collect::<HashMap<u32, Account>>();
+                    
+                    state.set(Some(State {
+                        pricebook,
+                        accounts,
+                    }));
                     
                     break;
                 } else {
@@ -44,17 +54,18 @@ pub fn App() -> Element {
 
     let navigator = use_signal(|| Form::Register);
 
-    let pricebook = pricebook.read();
-    if pricebook.is_some() {
-        let pb = Arc::new(pricebook.clone().unwrap());
+    if state().is_some() {
+        let state = state.clone().unwrap();
+        let pricebook = Arc::new(state.pricebook);
+        let accounts = Arc::new(state.accounts);
         rsx! {
             document::Stylesheet { href: TAILWIND }
             Sidebar { navigator }
             {match navigator() {
-                Form::Register => rsx! { Register { pricebook: pb } },
-                Form::Balance => rsx! { Balance {} },
-                Form::AccountManagement => rsx! { AccountManagement {} },
-                Form::InventoryManagement => rsx! { InventoryManagement { pricebook: pb } },
+                Form::Register => rsx! { Register { pricebook } },
+                Form::Balance => rsx! { Balance { accounts } },
+                Form::AccountManagement => rsx! { AccountManagement { accounts } },
+                Form::InventoryManagement => rsx! { InventoryManagement { pricebook } },
             }}
         }
     } else {

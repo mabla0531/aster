@@ -9,7 +9,7 @@ use model::{Account, Item, CompletedTransaction};
 
 pub static DB: LazyLock<Mutex<rusqlite::Connection>> = LazyLock::new(|| {
     if let Ok(c) = rusqlite::Connection::open("radix_asteris.db") {
-        return Mutex::new(c);
+        Mutex::new(c)
     } else {
         panic!("Error initializing database.");
     }
@@ -223,7 +223,7 @@ pub async fn get_account(account_id: u32) -> Result<Account, DBError> {
             let id: u32 = row.get(0)?;
             let name: String = row.get(1)?;
             let credit: u32 = row.get(2)?;
-            let overdraft: bool = if row.get::<usize, u32>(3)? == 0 { false } else { true };
+            let overdraft: bool = row.get::<usize, u32>(3)? != 0;
             let discount: u32 = row.get(4)?;
             let bunk: u32 = row.get(5)?;
             Ok(Account { id, name, credit, overdraft, discount, bunk })
@@ -297,7 +297,7 @@ pub async fn generic_query<T>(query: &str, applicator: impl FnMut(&Row<'_>) -> r
     let mut statement = connection.prepare(query)?;
     let rows = statement.query(())?;
     let res: Result<Vec<T>, rusqlite::Error> = rows.map(applicator).collect();
-    res.map_err(|e| DBError::Internal(e))
+    res.map_err(DBError::Internal)
 }
 
 pub async fn generic_exec(query: &str) -> Result<(), DBError> {
@@ -308,7 +308,7 @@ pub async fn generic_exec(query: &str) -> Result<(), DBError> {
         let mut statement = transaction.prepare(query)?;
         statement.execute(())?;
     }
-    transaction.commit().map_err(|e| DBError::Internal(e))
+    transaction.commit().map_err(DBError::Internal)
 }
 
 pub async fn create_item(item: Item) -> Result<(), DBError> {

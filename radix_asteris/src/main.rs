@@ -81,10 +81,9 @@ async fn main() {
 
     loop {
         print!(
-            "{}{}{} ",
+            "{}{} ",
             "⚘".purple(),
             " aster 0.1 ".blue(),
-            ""
         );
         std::io::stdout().flush().unwrap();
         let mut input = String::new();

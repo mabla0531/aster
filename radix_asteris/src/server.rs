@@ -1,7 +1,7 @@
 use std::{collections::HashMap, sync::LazyLock};
 
 use axum::{extract::Path, http::HeaderMap, response::Html, Json};
-use model::{Account, Item, TransactionMethod, TransactionRequest, TransactionStatus};
+use model::{Account, SyncState, TransactionMethod, TransactionRequest, TransactionStatus};
 
 use crate::{
     database,
@@ -38,7 +38,7 @@ pub async fn transaction(
 ) -> Result<Json<TransactionStatus>, String> {
     println!("Transaction request: {:?}", payload);
 
-    if check_auth(headers) == false {
+    if !check_auth(headers) {
         return Err("Unauthorized".to_string());
     }
 
@@ -57,7 +57,7 @@ pub async fn transaction(
         TransactionMethod::Credit { account_id } => handle_credit(tx_id, account_id, items, total).await,
     };
 
-    result.map(|r| Json(r))
+    result.map(Json)
 }
 
 #[utoipa::path(
@@ -74,7 +74,7 @@ pub async fn transaction(
 pub async fn get_accounts(headers: HeaderMap) -> Result<Json<Vec<Account>>, String> {
     println!("Get accounts request");
 
-    if check_auth(headers) == false {
+    if !check_auth(headers) {
         return Err("Unauthorized".to_string());
     }
 
@@ -101,7 +101,7 @@ pub async fn get_account(
 ) -> Result<Json<Account>, String> {
     println!("Get account request for account_id: {}", account_id);
 
-    if check_auth(headers) == false {
+    if !check_auth(headers) {
         return Err("Unauthorized".to_string());
     }
 
@@ -128,7 +128,7 @@ pub async fn insert_account(
 ) -> Result<Json<String>, String> {
     println!("Insert account request: {:?}", payload);
 
-    if check_auth(headers) == false {
+    if !check_auth(headers) {
         return Err("Unauthorized".to_string());
     }
 
@@ -145,21 +145,28 @@ pub async fn insert_account(
         ("x-auth-token" = String, Header, description = "Authorization token"),
     ),
     responses(
-        (status = 200, description = "Pricebook Response", body = Vec<Item>),
+        (status = 200, description = "Pricebook Response", body = SyncState),
         (status = 500, description = "Error querying items", body = String),
     ),
 )]
-pub async fn sync(headers: HeaderMap) -> Result<Json<Vec<Item>>, String> {
+pub async fn sync(headers: HeaderMap) -> Result<Json<SyncState>, String> {
     println!("Sync request");
     
-    if check_auth(headers) == false {
+    if !check_auth(headers) {
         return Err("Unauthorized".to_string());
     }
 
-    database::get_all_items()
+    let pricebook = database::get_all_items()
         .await
-        .map(|items| Json(items))
-        .map_err(|e| e.to_string())
+        .map_err(|e| e.to_string())?;
+    let accounts = database::get_all_accounts()
+        .await
+        .map_err(|e| e.to_string())?;
+
+    Ok(Json(SyncState {
+        pricebook,
+        accounts,
+    }))
 }
 
 pub fn check_auth(headers: HeaderMap) -> bool {

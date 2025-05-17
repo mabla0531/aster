@@ -4,7 +4,7 @@ use std::{collections::HashMap, sync::Arc};
 use dioxus::prelude::*;
 use model::Item;
 
-use crate::components::{searchbox::SearchBox, table::Table};
+use crate::components::searchbox::SearchBox;
 
 #[component]
 pub fn InventoryManagement(pricebook: Arc<HashMap<u32, Item>>) -> Element {
@@ -13,8 +13,13 @@ pub fn InventoryManagement(pricebook: Arc<HashMap<u32, Item>>) -> Element {
         div {
             class: "flex flex-col grow m-2 gap-2",
             SearchBox { on_input: move |_| {} }
-            Table {
-                
+            table {
+                class: "table",
+                thead {}
+                tbody {
+                    class: "text-2xl",
+                    
+                }
             }
             div {
                 class: "flex gap-2 mx-auto",

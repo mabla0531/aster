@@ -2,6 +2,12 @@ use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
 #[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
+pub struct SyncState {
+    pub pricebook: Vec<Item>,
+    pub accounts: Vec<Account>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
 pub enum TransactionMethod {
     Cash,
     Credit { account_id: u32 },
@@ -23,7 +29,7 @@ pub enum TransactionStatus {
     Failure { reason: String },
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, ToSchema, PartialEq, Eq)]
+#[derive(Clone, Debug, Serialize, Deserialize, ToSchema, PartialEq)]
 pub struct Item {
     pub id: u32,
     pub name: String,
@@ -37,7 +43,7 @@ pub struct TxEntry {
     pub quantity: u32,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
+#[derive(Clone, Debug, Serialize, Deserialize, ToSchema, PartialEq)]
 pub struct Account {
     pub id: u32,
     pub name: String,

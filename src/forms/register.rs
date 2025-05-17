@@ -6,7 +6,7 @@ use uuid::Uuid;
 
 use crate::{
     assets::{ADD, BACK, REMOVE},
-    components::{button::RowButton, layout::Divider, searchbox::SearchBox, table::Table},
+    components::{button::RowButton, layout::Divider, searchbox::SearchBox},
 };
 
 static TRANSACTION_STATE: GlobalSignal<TransactionState> = GlobalSignal::new(|| TransactionState::new());
@@ -46,7 +46,7 @@ pub fn Transaction(
         TRANSACTION_STATE.signal().set(new_tx);
     };
 
-    let tx_total_pretty = format!("{:.02}", 
+    let tx_total_pretty = format!("${:.02}", 
         TRANSACTION_STATE()
             .remaining_amount
             .unwrap_or(
@@ -64,7 +64,7 @@ pub fn Transaction(
             tr {
                 td { {qty.to_string()} }
                 td { {item.name.clone()} }
-                td { {format!("{:.02}", (item.price * qty) as f32 / 100.0)} }
+                td { {format!("${:.02}", (item.price * qty) as f32 / 100.0)} }
                 td {
                     RowButton { onclick: move |_| remove_item(id), src: REMOVE }
                 }
@@ -162,11 +162,15 @@ pub fn Inventory(
         div {
             class: "flex flex-col grow gap-2",
             SearchBox { on_input: move |val| search_candidate.set(val) }
-            Table {
-                thead {}
-                tbody {
-                    class: "text-2xl",
-                    {get_relevant_candidates()}
+            div {
+                class: "flex-1 bg-base-200 rounded-box w-full overflow-y-auto",
+                table {
+                    class: "table mx-auto w-2/3",
+                    thead {}
+                    tbody {
+                        class: "text-2xl",
+                        {get_relevant_candidates()}
+                    }
                 }
             }
         }
