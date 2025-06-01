@@ -5,7 +5,7 @@ use rusqlite::{fallible_iterator::FallibleIterator, Row};
 use thiserror::Error;
 use tokio::sync::Mutex;
 
-use model::{Account, Item, CompletedTransaction};
+use model::{Account, Item, CompletedTransaction, BalanceUpdate};
 
 pub static DB: LazyLock<Mutex<rusqlite::Connection>> = LazyLock::new(|| {
     if let Ok(c) = rusqlite::Connection::open("radix_asteris.db") {
@@ -28,7 +28,7 @@ pub enum DBError {
 }
 
 pub async fn wipe() {
-    
+
 }
 
 pub async fn init() -> Result<(), DBError> {
@@ -65,7 +65,7 @@ pub async fn init() -> Result<(), DBError> {
 pub async fn get_items(items: Vec<u32>) -> Result<Vec<Item>, DBError> {
     println!("DB | get_items");
     let items = generic_query(
-        &format!("SELECT * FROM Pricebook WHERE id IS ({})", items.iter().map(|i| i.to_string()).collect::<Vec<String>>().join(",")), 
+        &format!("SELECT * FROM Pricebook WHERE id IS ({})", items.iter().map(|i| i.to_string()).collect::<Vec<String>>().join(",")),
         |row| {
             let id: u32 = row.get(0)?;
             let name: String = row.get(1)?;
@@ -84,7 +84,7 @@ pub async fn get_prices(items: Vec<u32>) -> Result<HashMap<u32, u32>, DBError> {
         return Ok(HashMap::new());
     }
     let items = generic_query(
-        &format!("SELECT * FROM Pricebook WHERE id IN ({})", items.iter().map(|i| i.to_string()).collect::<Vec<String>>().join(",")), 
+        &format!("SELECT * FROM Pricebook WHERE id IN ({})", items.iter().map(|i| i.to_string()).collect::<Vec<String>>().join(",")),
         |row| {
             let id: u32 = row.get(0)?;
             let price: u32 = row.get(3)?;
@@ -109,9 +109,9 @@ pub async fn create_partial_transaction(tx_id: String, items: HashMap<u32, u32>,
     println!("DB | create_partial_transaction");
     generic_exec(
         &format!(
-            "INSERT OR REPLACE INTO PartialTransactions (id, items, remaining) VALUES ('{}', '{}', {})", 
-            tx_id, 
-            serde_json::to_string(&items)?, 
+            "INSERT OR REPLACE INTO PartialTransactions (id, items, remaining) VALUES ('{}', '{}', {})",
+            tx_id,
+            serde_json::to_string(&items)?,
             difference
         )
     ).await?;
@@ -120,7 +120,7 @@ pub async fn create_partial_transaction(tx_id: String, items: HashMap<u32, u32>,
 
 pub async fn check_partial_transaction(tx_id: String) -> Option<u32> {
     println!("DB | check_partial_transaction with id: {}", tx_id);
-    
+
     generic_query(
         &format!(
             "SELECT * FROM PartialTransactions WHERE id = '{}'", tx_id
@@ -146,9 +146,9 @@ pub async fn log_transaction(tx_id: String, items: HashMap<u32, u32>, cash_back:
     let items_vec = items.iter().map(|(&k, &v)| TxEntry { id: k, quantity: v}).collect::<Vec<_>>();
     generic_exec(
         &format!(
-            "INSERT INTO TransactionHistory (id, items, cash_back) VALUES ('{}', '{}', {})", 
-            tx_id, 
-            serde_json::to_string(&items_vec)?, 
+            "INSERT INTO TransactionHistory (id, items, cash_back) VALUES ('{}', '{}', {})",
+            tx_id,
+            serde_json::to_string(&items_vec)?,
             cash_back
         )
     ).await?;
@@ -159,8 +159,8 @@ pub async fn deduct_balance(account_id: u32, items_total: u32) -> Result<(), DBE
     println!("DB | deduct_balance");
     generic_exec(
         &format!(
-            "UPDATE Accounts SET credit = credit - {} WHERE id = {}", 
-            items_total, 
+            "UPDATE Accounts SET credit = credit - {} WHERE id = {}",
+            items_total,
             account_id
         )
     ).await?;
@@ -181,7 +181,7 @@ pub async fn get_all_transactions() -> Result<Vec<CompletedTransaction>, DBError
 
     let transactions = transactions
         .iter()
-        .filter_map(|(id, items, cash_back)| 
+        .filter_map(|(id, items, cash_back)|
             serde_json::from_str(items)
                 .map(|items| CompletedTransaction { id: id.clone(), items, cash_back: *cash_back })
                 .ok()
@@ -257,12 +257,12 @@ pub async fn insert_account(account: Account) -> Result<(), DBError> {
     println!("DB | insert_account");
     generic_exec(
         &format!(
-            "INSERT OR REPLACE INTO Accounts (id, name, credit, overdraft, discount, bunk) VALUES ({}, '{}', {}, {}, {}, {})", 
-            account.id, 
-            account.name, 
-            account.credit, 
-            account.overdraft as u32, 
-            account.discount, 
+            "INSERT OR REPLACE INTO Accounts (id, name, credit, overdraft, discount, bunk) VALUES ({}, '{}', {}, {}, {}, {})",
+            account.id,
+            account.name,
+            account.credit,
+            account.overdraft as u32,
+            account.discount,
             account.bunk
         )
     ).await
@@ -272,12 +272,12 @@ pub async fn update_balance(body: BalanceUpdate) -> Result<(), DBError> {
     println!("DB | update_balance");
     generic_exec(
         &format!(
-            "UPDATE Accounts WHERE id = {} SET credit = credit {} {}",
-            body.id,
+            "UPDATE Accounts SET credit = credit {} {} WHERE id = {}",
             body.operation,
-            body.amount
+            body.amount,
+            body.id,
         )
-    )
+    ).await
 }
 
 // ------------ Init-oriented ------------

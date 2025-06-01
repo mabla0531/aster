@@ -1,7 +1,7 @@
 use std::{collections::HashMap, sync::LazyLock};
 
 use axum::{extract::Path, http::HeaderMap, response::Html, Json};
-use model::{Account, SyncState, TransactionMethod, TransactionRequest, TransactionStatus};
+use model::{Account, SyncState, TransactionMethod, TransactionRequest, TransactionStatus, BalanceUpdate};
 
 use crate::{
     database,
@@ -28,7 +28,7 @@ pub async fn default() -> Html<String> {
         ("x-auth-token" = String, Header, description = "Authorization token"),
     ),
     responses(
-        (status = 201, description = "Transaction Response", body = TransactionStatus),
+        (status = 200, description = "Transaction Response", body = TransactionStatus),
         (status = 500, description = "Transaction Error", body = String),
     ),
 )]
@@ -118,7 +118,7 @@ pub async fn get_account(
         ("x-auth-token" = String, Header, description = "Authorization token"),
     ),
     responses(
-        (status = 201, description = "Account inserted", body = String),
+        (status = 200, description = "Account inserted", body = String),
         (status = 500, description = "Error inserting account", body = String),
     ),
 )]
@@ -145,7 +145,7 @@ pub async fn insert_account(
         ("x-auth-token" = String, Header, description = "Authorization token"),
     ),
     responses(
-        (status = 201, description = "Balance updated", body = String),
+        (status = 200, description = "Balance updated", body = String),
         (status = 500, description = "Error updating balance", body = String),
     ),
 )]
@@ -178,7 +178,7 @@ pub async fn update_balance(
 )]
 pub async fn sync(headers: HeaderMap) -> Result<Json<SyncState>, String> {
     println!("Sync request");
-    
+
     if !check_auth(headers) {
         return Err("Unauthorized".to_string());
     }

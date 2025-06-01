@@ -36,7 +36,7 @@ async fn handle_args() {
 }
 
 #[derive(OpenApi)]
-#[openapi(paths(default, transaction, get_accounts, get_account, insert_account, sync))]
+#[openapi(paths(default, transaction, get_accounts, get_account, insert_account, update_balance, sync))]
 struct ApiDoc;
 
 pub async fn start_server() {
@@ -52,6 +52,7 @@ pub async fn start_server() {
         .routes(routes!(get_accounts))
         .routes(routes!(get_account))
         .routes(routes!(insert_account))
+        .routes(routes!(update_balance))
         .routes(routes!(sync))
         .split_for_parts();
 
