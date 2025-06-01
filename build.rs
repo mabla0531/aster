@@ -1,7 +1,7 @@
 use std::process::Command;
 
 fn main() {
-    Command::new("/home/matthew/dev/aster/tailwindcss-linux-x64")
+    Command::new("./tailwindcss-linux-x64")
         .arg("--input")
         .arg("input.css")
         .arg("--output")

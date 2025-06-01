@@ -2,6 +2,7 @@ mod app;
 mod assets;
 mod components;
 mod forms;
+mod util;
 
 use std::{sync::LazyLock, time::Duration};
 

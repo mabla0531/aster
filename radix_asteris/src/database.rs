@@ -265,9 +265,19 @@ pub async fn insert_account(account: Account) -> Result<(), DBError> {
             account.discount, 
             account.bunk
         )
-    ).await?;
+    ).await
+}
 
-    Ok(())
+pub async fn update_balance(body: BalanceUpdate) -> Result<(), DBError> {
+    println!("DB | update_balance");
+    generic_exec(
+        &format!(
+            "UPDATE Accounts WHERE id = {} SET credit = credit {} {}",
+            body.id,
+            body.operation,
+            body.amount
+        )
+    )
 }
 
 // ------------ Init-oriented ------------

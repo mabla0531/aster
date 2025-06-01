@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
@@ -51,6 +53,27 @@ pub struct Account {
     pub overdraft: bool,
     pub discount: u32,
     pub bunk: u32,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
+pub struct BalanceUpdate {
+    pub id: u32, 
+    pub amount: u32,
+    pub operation: UpdateOperation
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
+pub enum UpdateOperation {
+    Add, Sub
+}
+
+impl Display for UpdateOperation {
+    fn fmt(&self, w: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
+        match self {
+            Self::Add => write!(w, "+"),
+            Self::Sub => write!(w, "-")
+        }
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]

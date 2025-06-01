@@ -139,6 +139,33 @@ pub async fn insert_account(
 }
 
 #[utoipa::path(
+    post,
+    path = "/accounts/balance",
+    params(
+        ("x-auth-token" = String, Header, description = "Authorization token"),
+    ),
+    responses(
+        (status = 201, description = "Balance updated", body = String),
+        (status = 500, description = "Error updating balance", body = String),
+    ),
+)]
+pub async fn update_balance(
+    headers: HeaderMap,
+    Json(payload): Json<BalanceUpdate>,
+) -> Result<Json<String>, String> {
+    println!("Update balance request: {:?}", payload);
+
+    if !check_auth(headers) {
+        return Err("Unauthorized".to_string());
+    }
+
+    match database::update_balance(payload).await {
+        Ok(_) => Ok(Json("Balance updated".to_string())),
+        Err(e) => Err(e.to_string()),
+    }
+}
+
+#[utoipa::path(
     get,
     path = "/sync",
     params(

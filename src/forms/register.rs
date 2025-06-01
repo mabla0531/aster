@@ -1,12 +1,15 @@
+mod payment;
+
 use std::{collections::HashMap, sync::Arc};
 
 use dioxus::prelude::*;
-use model::{Item, TransactionMethod, TransactionRequest, TransactionStatus, TxEntry};
+use model::Item;
+use payment::Payment;
 use uuid::Uuid;
 
 use crate::{
-    assets::{ADD, BACK, REMOVE},
-    components::{button::RowButton, layout::Divider, searchbox::SearchBox},
+    assets::{ADD, REMOVE},
+    components::{button::RowButton, layout::Divider, searchbox::SearchBox}, util::amount_pretty,
 };
 
 static TRANSACTION_STATE: GlobalSignal<TransactionState> = GlobalSignal::new(|| TransactionState::new());
@@ -46,7 +49,7 @@ pub fn Transaction(
         TRANSACTION_STATE.signal().set(new_tx);
     };
 
-    let tx_total_pretty = format!("${:.02}", 
+    let tx_total_pretty = amount_pretty(
         TRANSACTION_STATE()
             .remaining_amount
             .unwrap_or(
@@ -55,8 +58,7 @@ pub fn Transaction(
                     .iter()
                     .map(|(k, v)| pricebook.get(k).map(|i| i.price).unwrap_or(0) * v)
                     .sum::<u32>()
-            ) as f32
-            / 100.0
+            )
     );
 
     let tx_item_row_as_element = |item: &Item, id: u32, qty: u32| {
@@ -64,7 +66,7 @@ pub fn Transaction(
             tr {
                 td { {qty.to_string()} }
                 td { {item.name.clone()} }
-                td { {format!("${:.02}", (item.price * qty) as f32 / 100.0)} }
+                td { {amount_pretty(item.price * qty)} }
                 td {
                     RowButton { onclick: move |_| remove_item(id), src: REMOVE }
                 }
@@ -118,6 +120,7 @@ pub fn Transaction(
         }
     }
 }
+
 #[component]
 pub fn Inventory(
     pricebook: Arc<HashMap<u32, Item>>,
@@ -147,7 +150,7 @@ pub fn Inventory(
                     tr {
                         td { {format!("{:04}", k)} }
                         td { {v.name.clone()} }
-                        td { {format!("{:.02}", v.price as f32 / 100.0)} }
+                        td { {amount_pretty(v.price)} }
                         td { {v.gtin.map(|g| format!("{:10}", g)).unwrap_or("—".to_string())} }
                         td {
                             RowButton {onclick: move |_| add_one_item(k.clone()), src: ADD }
@@ -204,203 +207,3 @@ pub fn Register(
     }
 }
 
-pub async fn dispatch_transaction(
-    transaction_request: TransactionRequest,
-) -> Option<TransactionStatus> {
-    match crate::CLIENT
-        .post("http://localhost:5555/transaction")
-        .json(&transaction_request)
-        .send()
-        .await
-    {
-        Ok(res) => {
-            if res.status() == 200 {
-                match res.json::<TransactionStatus>().await {
-                    Ok(res) => return Some(res),
-                    Err(e) => println!("Error parsing tx response: {:?}", e),
-                }
-            } else if res.status() == 500 {
-                println!("Error code 500 returned for tx request: {:?}", res.text().await);
-            }
-        },
-        Err(e) => println!("Error sending tx request: {:?}", e),
-    };
-
-    None
-}
-
-pub fn parse_custom_cash(input_amount: String) -> Result<u32, ()> {
-    let sides: Vec<String> = input_amount
-        .split(".")
-        .map(|chunk| format!("{:0>1}", chunk))
-        .collect();
-
-    // sides cannot be > 2, e.g. 2.00.30
-
-    if sides.len() == 2 {
-        // try as float
-        if let Ok(dollars) = sides[0].parse::<u32>() {
-            if let Ok(cents) = format!("{:.2}", sides[1]).parse::<u32>() {
-                return Ok(dollars * 100 + cents);
-            }
-        }
-    } else if sides.len() < 2 {
-        // try as u32
-        if let Ok(total) = sides[0].parse() {
-            return Ok(total);
-        }
-    }
-
-    Err(())
-}
-
-#[component]
-pub fn PaymentTitle(title: &'static str, purchase_stage: Signal<PurchaseStage>) -> Element {
-    rsx! {
-        div {
-            class: "card-title flex w-full px-6 pt-6",
-            button {
-                class: "btn btn-ghost btn-square",
-                onclick: move |_| purchase_stage.set(PurchaseStage::None),
-                img { class: "w-9 h-9", src: BACK }
-            }
-            div { class: "mx-auto text-2xl", {title} }
-            div { class: "w-10" }
-        }
-    }
-}
-
-#[component]
-pub fn PaymentCharge(purchase_stage: Signal<PurchaseStage>) -> Element {
-    rsx! {}
-}
-
-#[derive(Clone)]
-pub enum CashStage {
-    Selection { info: Option<String> },
-    Custom,
-    Confirmation { amount: u32 },
-    CashBack { amount: u32 },
-}
-
-#[component]
-pub fn PaymentCash(purchase_stage: Signal<PurchaseStage>) -> Element {
-    let mut cash_stage = use_signal(|| CashStage::Selection { info: None });
-    let mut custom_amount: Signal<Option<u32>> = use_signal(|| None);
-
-    let finalize = move |amount: u32| async move {
-        match dispatch_transaction(
-            TransactionRequest {
-                tx_id: TRANSACTION_STATE().tx_id,
-                tender: amount,
-                items: TRANSACTION_STATE().items.iter().map(|(&k, &v)| TxEntry { id: k, quantity: v }).collect(),
-                method: TransactionMethod::Cash,
-            }
-        ).await {
-            Some(tx_res) => {
-                match tx_res {
-                    TransactionStatus::Success { cash_back } => {
-                        TRANSACTION_STATE.signal().set(TransactionState::new());
-                        cash_stage.set(CashStage::CashBack { amount: cash_back });
-                    },
-                    TransactionStatus::Failure { reason } => {
-                        cash_stage.set(CashStage::Selection { info: Some(reason) })
-                    },
-                    TransactionStatus::Partial { remaining } => {
-                        TRANSACTION_STATE.signal().write().remaining_amount = Some(remaining);
-                        cash_stage.set(CashStage::Selection { info: None });
-                    },
-                    TransactionStatus::InvalidAccount { .. } => {
-                        cash_stage.set(CashStage::Selection { info: Some("How tf did you pass an account in a cash transaction bruh 😭😭".to_string()) })
-                    }
-                }
-            },
-            None => {
-                cash_stage.set(CashStage::Selection { info: Some("An error occurred. Please try again or notify a manager.".to_string()) })
-            }
-        }
-    };
-
-    rsx! {
-        {match cash_stage.read().clone() {
-            CashStage::Selection { info } => {
-                rsx! {
-                    div {
-                        class: "flex flex-col w-full gap-2",
-                        {if let Some(info) = info { rsx! { div { class: "text-sm text-red-300", {info} } } } else { rsx! {} }}
-                        div {
-                            class: "flex gap-2",
-                            button { class: "grow btn btn-square btn-success btn-lg", onclick: move |_| cash_stage.set(CashStage::Confirmation { amount: 500 }), "$5" }
-                            button { class: "grow btn btn-square btn-success btn-lg", onclick: move |_| cash_stage.set(CashStage::Confirmation { amount: 1000 }), "$10" }
-                            button { class: "grow btn btn-square btn-success btn-lg", onclick: move |_| cash_stage.set(CashStage::Confirmation { amount: 2000 }), "$20" }
-                            button { class: "grow btn btn-square btn-info btn-lg", onclick: move |_| cash_stage.set(CashStage::Custom), "..." }
-                        }
-                    }
-                }
-            },
-            CashStage::Custom => {
-                rsx! {
-                    input { class: "grow text-xl text-center border border-gray-400 rounded-sm", oninput: move |val| custom_amount.set(parse_custom_cash(val.data().value()).ok()) }
-                    button { class: "grow btn btn-square btn-success btn-lg", onclick: move |_| cash_stage.set(CashStage::Confirmation { amount: custom_amount().unwrap_or(0) }), "Confirm" }
-                }
-            },
-            CashStage::Confirmation { amount } => {
-                rsx! {
-                    div {
-                        class: "grow text-xl",
-                        {format!("Amount: ${:.2}", amount as f32 / 100.0)}
-                    }
-                    button {
-                        class: "grow btn btn-square btn-success btn-lg",
-                        onclick: move |_| finalize(amount),
-                        "Finalize"
-                    }
-                }
-            },
-            CashStage::CashBack { amount } => {
-                rsx! {
-                    div {
-                        class: "grow text-xl",
-                        {format!("Cash back: ${:.2}", amount as f32 / 100.0)}
-                    }
-                    button {
-                        class: "grow btn btn-square btn-success btn-lg",
-                        onclick: move |_| purchase_stage.set(PurchaseStage::None),
-                        "Done"
-                    }
-                }
-            }
-        }}
-    }
-}
-
-#[component]
-pub fn Payment(total: u32, purchase_stage: Signal<PurchaseStage>) -> Element {
-    if *purchase_stage.read() == PurchaseStage::None {
-        return rsx! {};
-    }
-
-    let (title, inner) = match *purchase_stage.read() {
-        PurchaseStage::Charge => ("Account", rsx! { PaymentCharge { purchase_stage } }),
-        PurchaseStage::Cash => ("Cash", rsx! { PaymentCash { purchase_stage } }),
-        _ => return rsx! {},
-    };
-
-    rsx! {
-        div {
-            class: "absolute top-0 left-0 flex justify-center items-center w-screen h-screen",
-            div {
-                class: "card w-108 bg-base-100 shadow-sm",
-                PaymentTitle { title, purchase_stage }
-                div {
-                    class: "card-body flex flex-col gap-6",
-                    div { class: "text-xl", {format!("Total: ${:.2}", total as f32 / 100.0)} }
-                    div {
-                        class: "flex gap-2",
-                        {inner}
-                    }
-                }
-            }
-        }
-    }
-}
