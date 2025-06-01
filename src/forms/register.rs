@@ -1,6 +1,6 @@
 mod payment;
 
-use std::{collections::HashMap, sync::Arc};
+use std::collections::HashMap;
 
 use dioxus::prelude::*;
 use model::Item;
@@ -40,7 +40,7 @@ pub enum PurchaseStage {
 
 #[component]
 pub fn Transaction(
-    pricebook: Arc<HashMap<u32, Item>>,
+    pricebook: Signal<HashMap<u32, Item>>,
     purchase_stage: Signal<PurchaseStage>,
 ) -> Element {
     let remove_item = move |plu: u32| {
@@ -56,7 +56,7 @@ pub fn Transaction(
                 TRANSACTION_STATE()
                     .items
                     .iter()
-                    .map(|(k, v)| pricebook.get(k).map(|i| i.price).unwrap_or(0) * v)
+                    .map(|(k, v)| pricebook().get(k).map(|i| i.price).unwrap_or(0) * v)
                     .sum::<u32>()
             )
     );
@@ -77,7 +77,7 @@ pub fn Transaction(
     let tx_items_as_elements = || {
         rsx! {
             {TRANSACTION_STATE().clone().items.into_iter().map(|(k, v)| {
-                pricebook.get(&k).map(|i| tx_item_row_as_element(i, k, v)).unwrap_or(rsx!{})
+                pricebook().get(&k).map(|i| tx_item_row_as_element(i, k, v)).unwrap_or(rsx!{})
             })}
         }
     };
@@ -123,7 +123,7 @@ pub fn Transaction(
 
 #[component]
 pub fn Inventory(
-    pricebook: Arc<HashMap<u32, Item>>,
+    pricebook: Signal<HashMap<u32, Item>>,
 ) -> Element {
     let mut search_candidate = use_signal(|| "".to_string());
 
@@ -134,6 +134,7 @@ pub fn Inventory(
     };
 
     let get_relevant_candidates = || {
+        let pricebook = pricebook();
         let items = pricebook
             .iter()
             .filter(|(k, v)| {
@@ -182,8 +183,9 @@ pub fn Inventory(
 
 #[component]
 pub fn Register(
-    pricebook: Arc<HashMap<u32, Item>>,
+    pricebook: Signal<HashMap<u32, Item>>,
 ) -> Element {
+
     let purchase_stage = use_signal(|| PurchaseStage::None);
 
     let tx_total = TRANSACTION_STATE()
@@ -192,15 +194,15 @@ pub fn Register(
             TRANSACTION_STATE()
             .items
             .iter()
-            .map(|(k, v)| pricebook.get(k).map(|i| i.price).unwrap_or(0) * v)
+            .map(|(k, v)| pricebook().get(k).map(|i| i.price).unwrap_or(0) * v)
             .sum::<u32>()
         );
 
     rsx! {
         div {
             class: format!("flex grow m-2 gap-2 {}", if !purchase_stage.read().eq(&PurchaseStage::None) { "blur-sm" } else { "" }),
-            Transaction { pricebook: pricebook.clone(), purchase_stage }
-            Inventory { pricebook: pricebook.clone() }
+            Transaction { pricebook, purchase_stage }
+            Inventory { pricebook }
         }
 
         Payment { total: tx_total, purchase_stage }

@@ -1,5 +1,5 @@
 
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::HashMap};
 
 use dioxus::prelude::*;
 use model::Item;
@@ -7,7 +7,7 @@ use model::Item;
 use crate::components::searchbox::SearchBox;
 
 #[component]
-pub fn InventoryManagement(pricebook: Arc<HashMap<u32, Item>>) -> Element {
+pub fn InventoryManagement(pricebook: Signal<HashMap<u32, Item>>) -> Element {
     
     rsx! {
         div {

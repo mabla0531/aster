@@ -1,4 +1,4 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::HashMap};
 
 use dioxus::prelude::*;
 use model::Account;
@@ -6,7 +6,7 @@ use model::Account;
 use crate::components::searchbox::SearchBox;
 
 #[component]
-pub fn AccountManagement(accounts: Arc<HashMap<u32, Account>>) -> Element {
+pub fn AccountManagement(accounts: Signal<HashMap<u32, Account>>) -> Element {
     rsx! {
         div {
             class: "flex flex-col grow m-2 gap-2",

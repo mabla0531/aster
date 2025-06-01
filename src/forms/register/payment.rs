@@ -1,7 +1,7 @@
 use dioxus::prelude::*;
 use model::{TransactionMethod, TransactionRequest, TransactionStatus, TxEntry};
 
-use crate::{assets::BACK, forms::register::{PurchaseStage, TransactionState, TRANSACTION_STATE}};
+use crate::{assets::BACK, util::parse_cash_value, forms::register::{PurchaseStage, TransactionState, TRANSACTION_STATE}};
 
 pub async fn dispatch_transaction(
     transaction_request: TransactionRequest,
@@ -16,42 +16,16 @@ pub async fn dispatch_transaction(
             if res.status() == 200 {
                 match res.json::<TransactionStatus>().await {
                     Ok(res) => return Some(res),
-                    Err(e) => println!("Error parsing tx response: {:?}", e),
+                    Err(e) => tracing::error!("Error parsing tx response: {:?}", e),
                 }
             } else if res.status() == 500 {
-                println!("Error code 500 returned for tx request: {:?}", res.text().await);
+                tracing::error!("Error code 500 returned for tx request: {:?}", res.text().await);
             }
         },
-        Err(e) => println!("Error sending tx request: {:?}", e),
+        Err(e) => tracing::error!("Error sending tx request: {:?}", e),
     };
 
     None
-}
-
-
-pub fn parse_custom_cash(input_amount: String) -> Result<u32, ()> {
-    let sides: Vec<String> = input_amount
-        .split(".")
-        .map(|chunk| format!("{:0>1}", chunk))
-        .collect();
-
-    // sides cannot be > 2, e.g. 2.00.30
-
-    if sides.len() == 2 {
-        // try as float
-        if let Ok(dollars) = sides[0].parse::<u32>() {
-            if let Ok(cents) = format!("{:.2}", sides[1]).parse::<u32>() {
-                return Ok(dollars * 100 + cents);
-            }
-        }
-    } else if sides.len() < 2 {
-        // try as u32
-        if let Ok(total) = sides[0].parse() {
-            return Ok(total);
-        }
-    }
-
-    Err(())
 }
 
 #[component]
@@ -140,7 +114,7 @@ pub fn PaymentCash(purchase_stage: Signal<PurchaseStage>) -> Element {
             },
             CashStage::Custom => {
                 rsx! {
-                    input { class: "grow text-xl text-center border border-gray-400 rounded-sm", oninput: move |val| custom_amount.set(parse_custom_cash(val.data().value()).ok()) }
+                    input { class: "grow text-xl text-center border border-gray-400 rounded-sm", oninput: move |val| custom_amount.set(parse_cash_value(val.data().value()).ok()) }
                     button { class: "grow btn btn-square btn-success btn-lg", onclick: move |_| cash_stage.set(CashStage::Confirmation { amount: custom_amount().unwrap_or(0) }), "Confirm" }
                 }
             },

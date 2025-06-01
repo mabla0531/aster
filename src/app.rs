@@ -1,4 +1,4 @@
-use std::{collections::HashMap, sync::Arc, time::Duration};
+use std::{collections::HashMap, time::Duration};
 
 use dioxus::prelude::*;
 use model::{Account, Item, SyncState};
@@ -12,38 +12,34 @@ use crate::{
     },
 };
 
-#[derive(Clone)]
-struct State {
-    pricebook: HashMap<u32, Item>,
-    accounts: HashMap<u32, Account>,
-}
-
 #[component]
 pub fn App() -> Element {
-    let mut state: Signal<Option<State>> = use_signal(|| None);
+    let mut pricebook: Signal<HashMap<u32, Item>> = use_signal(|| HashMap::new());
+    let mut accounts: Signal<HashMap<u32, Account>> = use_signal(|| HashMap::new());
 
-    // this sucks, I'm aware. I'm lazy and don't want to deal with useState magic especially in a mimicking language
-    if state.read().is_none() {
+    let mut loaded = use_signal(|| false);
+
+    if !loaded() {
         spawn(async move {
             loop {
-                println!("Querying backend for pricebook...");
+                tracing::info!("Querying backend for pricebook...");
                 if let Ok(response) = crate::CLIENT.get("http://localhost:5555/sync").send().await {
                     let sync_state = response
                         .json::<SyncState>()
                         .await
                         .expect("Got malformed state contents from Radix");
-                    let pricebook = sync_state.pricebook.into_iter()
+                    let pb = sync_state.pricebook.into_iter()
                         .map(|i| (i.id, i))
                         .collect::<HashMap<u32, Item>>();
-                    let accounts = sync_state.accounts.into_iter()
+                    let ac = sync_state.accounts.into_iter()
                         .map(|a| (a.id, a))
                         .collect::<HashMap<u32, Account>>();
-                    
-                    state.set(Some(State {
-                        pricebook,
-                        accounts,
-                    }));
-                    
+
+                    pricebook.set(pb);
+                    accounts.set(ac);
+
+                    loaded.set(true);
+
                     break;
                 } else {
                     tokio::time::sleep(Duration::from_secs(1)).await;
@@ -54,10 +50,7 @@ pub fn App() -> Element {
 
     let navigator = use_signal(|| Form::Register);
 
-    if state().is_some() {
-        let state = state.clone().unwrap();
-        let pricebook = Arc::new(state.pricebook);
-        let accounts = Arc::new(state.accounts);
+    if loaded() {
         rsx! {
             document::Stylesheet { href: TAILWIND }
             Sidebar { navigator }
