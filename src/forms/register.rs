@@ -3,13 +3,12 @@ mod payment;
 use std::collections::HashMap;
 
 use dioxus::prelude::*;
-use model::Item;
+use model::{Account, Item};
 use payment::Payment;
 use uuid::Uuid;
 
 use crate::{
-    assets::{ADD, REMOVE},
-    components::{button::RowButton, layout::Divider, searchbox::SearchBox}, util::amount_pretty,
+    components::{layout::Divider, searchbox::SearchBox}, util::amount_pretty,
 };
 
 static TRANSACTION_STATE: GlobalSignal<TransactionState> = GlobalSignal::new(|| TransactionState::new());
@@ -68,7 +67,11 @@ pub fn Transaction(
                 td { {item.name.clone()} }
                 td { {amount_pretty(item.price * qty)} }
                 td {
-                    RowButton { onclick: move |_| remove_item(id), src: REMOVE }
+                    button {
+                        onclick: move |_| remove_item(id),
+                        class: "btn btn-base-100 p-0 w-8 h-8",
+                        div { class: "w-9 h-9", dangerous_inner_html: include_str!("../../assets/remove.svg") }
+                    }
                 }
             }
         }
@@ -149,13 +152,12 @@ pub fn Inventory(
             .map(|(k, v)| {
                 rsx! {
                     tr {
+                        class: "hover:bg-base-300",
+                        onclick: move |_| add_one_item(k.clone()),
                         td { {format!("{:04}", k)} }
                         td { {v.name.clone()} }
                         td { {amount_pretty(v.price)} }
                         td { {v.gtin.map(|g| format!("{:10}", g)).unwrap_or("—".to_string())} }
-                        td {
-                            RowButton {onclick: move |_| add_one_item(k.clone()), src: ADD }
-                        }
                     }
                 }
             });
@@ -184,6 +186,7 @@ pub fn Inventory(
 #[component]
 pub fn Register(
     pricebook: Signal<HashMap<u32, Item>>,
+    accounts: Signal<HashMap<u32, Account>>,
 ) -> Element {
 
     let purchase_stage = use_signal(|| PurchaseStage::None);
@@ -205,7 +208,7 @@ pub fn Register(
             Inventory { pricebook }
         }
 
-        Payment { total: tx_total, purchase_stage }
+        Payment { total: tx_total, accounts: accounts, purchase_stage }
     }
 }
 

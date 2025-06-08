@@ -44,18 +44,3 @@ pub async fn update_balance(balance_update: BalanceUpdate) -> bool {
 
     false
 }
-
-pub async fn try_sync_accounts(mut accounts: Signal<HashMap<u32, Account>>) {
-    if let Ok(res) = crate::CLIENT
-        .get("http://localhost:5555/accounts")
-        .send()
-        .await {
-            if let Ok(new_accounts) = res.json::<Vec<Account>>().await {
-                accounts.set(
-                    new_accounts.into_iter()
-                        .map(|a| (a.id, a))
-                        .collect::<HashMap<u32, Account>>()
-                );
-            }
-        }
-}

@@ -2,15 +2,13 @@ pub mod database;
 pub mod server;
 pub mod transaction;
 
-use std::io::Write;
-
 use clap::{arg, command, Parser};
+use crossterm::event::{self, Event, KeyCode};
+use ratatui::Frame;
 use utoipa::OpenApi;
 use utoipa_axum::{router::OpenApiRouter, routes};
 
 use server::*;
-
-use colored::Colorize;
 
 #[derive(Parser, Debug)]
 #[command(version, about)]
@@ -36,7 +34,15 @@ async fn handle_args() {
 }
 
 #[derive(OpenApi)]
-#[openapi(paths(default, transaction, get_accounts, get_account, insert_account, update_balance, sync))]
+#[openapi(paths(
+    default,
+    transaction,
+    get_accounts,
+    get_account,
+    insert_account,
+    update_balance,
+    sync
+))]
 struct ApiDoc;
 
 pub async fn start_server() {
@@ -68,48 +74,34 @@ pub async fn start_server() {
         .unwrap();
 }
 
-pub fn sql_console() {
-    println!("SQL console is not implemented yet.");
-}
-
-pub fn realtime_log() {
-    println!("Real-time log is not implemented yet.");
+fn render(frame: &mut Frame) {
+    frame.render_widget("hello world", frame.area());
 }
 
 #[tokio::main]
 async fn main() {
     tokio::spawn(start_server());
 
-    loop {
-        print!(
-            "{}{} ",
-            "⚘".purple(),
-            " aster 0.1 ".blue(),
-        );
-        std::io::stdout().flush().unwrap();
-        let mut input = String::new();
-        std::io::stdin().read_line(&mut input).unwrap();
-
-        match input.trim() {
-            "sql" => {
-                sql_console();
-            }
-            "log" => {
-                realtime_log();
-            }
-            "swag" => {
-                let _ = open::that("http://localhost:5555/swagger-ui");
-            }
-            "exit" => {
-                println!("Exiting...");
-                break;
-            }
-            "help" => {
-                println!("Available commands:\n\nsql | execute SQL query on db\nlog | enter realtime log mode\nswag | open swaggerui page\nexit | Exits the application\nhelp | Prints this message");
-            }
-            _ => {
-                println!("Unknown command: {}", input.trim());
-            }
-        }
-    }
+    loop {}
+    //    color_eyre::install().expect("Failed to install color_eyre");
+    //    let mut terminal = ratatui::init();
+    //
+    //    loop {
+    //        terminal.draw(render).expect("Critical error in terminal rendering loop");
+    //
+    //        match event::read().expect("Critical error in event loop") {
+    //            Event::Key(key)  => {
+    //                match key.code {
+    //                    KeyCode::Up => {},
+    //                    KeyCode::Down => {},
+    //                    KeyCode::Char(c) => {},
+    //                    KeyCode::Enter => {},
+    //                    _ => {}
+    //                }
+    //            },
+    //            _ => {}
+    //        }
+    //    }
+    //
+    //    ratatui::restore();
 }

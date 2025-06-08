@@ -1,7 +1,9 @@
-use dioxus::prelude::*;
-use model::{TransactionMethod, TransactionRequest, TransactionStatus, TxEntry};
+use std::collections::HashMap;
 
-use crate::{assets::BACK, util::parse_cash_value, forms::register::{PurchaseStage, TransactionState, TRANSACTION_STATE}};
+use dioxus::prelude::*;
+use model::{Account, TransactionMethod, TransactionRequest, TransactionStatus, TxEntry};
+
+use crate::{forms::register::{PurchaseStage, TransactionState, TRANSACTION_STATE}, util::{amount_pretty, parse_cash_value, try_sync_accounts}};
 
 pub async fn dispatch_transaction(
     transaction_request: TransactionRequest,
@@ -34,9 +36,9 @@ pub fn PaymentTitle(title: &'static str, purchase_stage: Signal<PurchaseStage>) 
         div {
             class: "card-title flex w-full px-6 pt-6",
             button {
-                class: "btn btn-ghost btn-square",
+                class: "btn btn-ghost btn-square w-9 h-9",
                 onclick: move |_| purchase_stage.set(PurchaseStage::None),
-                img { class: "w-9 h-9", src: BACK }
+                dangerous_inner_html: include_str!("../../../assets/back.svg")
             }
             div { class: "mx-auto text-2xl", {title} }
             div { class: "w-10" }
@@ -45,8 +47,101 @@ pub fn PaymentTitle(title: &'static str, purchase_stage: Signal<PurchaseStage>) 
 }
 
 #[component]
-pub fn PaymentCharge(purchase_stage: Signal<PurchaseStage>) -> Element {
-    rsx! {}
+pub fn PaymentCharge(accounts: Signal<HashMap<u32, Account>>, purchase_stage: Signal<PurchaseStage>) -> Element {
+    let mut account_query: Signal<String> = use_signal(|| "".to_string());    
+    let mut account_id: Signal<Option<u32>> = use_signal(|| None);
+    let mut info: Signal<String> = use_signal(|| "".to_string());
+
+    let finalize = move || async move {
+        if account_id().is_none() {
+            info.set("Invalid account selected. Please choose a valid account.".to_string());
+            return; // No account selected
+        }
+
+        match dispatch_transaction(
+            TransactionRequest {
+                tx_id: TRANSACTION_STATE().tx_id,
+                items: TRANSACTION_STATE().items.iter().map(|(&k, &v)| TxEntry { id: k, quantity: v }).collect(),
+                method: TransactionMethod::Credit { account_id: account_id().unwrap() },
+            }
+        ).await {
+            Some(tx_res) => {
+                match tx_res {
+                    TransactionStatus::Success { .. } => {
+                        try_sync_accounts(accounts).await;
+                        TRANSACTION_STATE.signal().set(TransactionState::new());
+                    },
+                    TransactionStatus::Failure { reason } => {
+                        info.set(reason);
+                    },
+                    TransactionStatus::InvalidAccount { .. } => {
+                        info.set("Invalid account selected. Please choose a valid account.".to_string());
+                    }
+                    _ => {},
+                }
+            },
+            None => {
+                info.set("An error occurred. Please try again or notify a manager.".to_string());
+            }
+        }
+    };
+
+    rsx! {
+        div {
+            class: "flex gap-4 w-full",
+            div {
+                class: "flex flex-col gap-2",
+                {info}
+                input {
+                    class: "input input-bordered text-lg text-center w-64",
+                    oninput: move |e| account_query.set(e.data().value()),
+                    placeholder: "Search accounts...",
+                    value: account_query(),
+                }
+                div {                    
+                    class: "overflow-y-auto max-h-28",
+                    table {
+                        class: "w-full text-lg",
+                        {accounts()
+                            .into_iter()
+                            .filter(|(_, account)| account.name.to_lowercase().contains(&account_query().to_lowercase()) || account.id.to_string().contains(&account_query().to_lowercase()))
+                            .map(|(id, account)| {
+                                rsx! {
+                                    tr {
+                                        key: "{id}",
+                                        onclick: move |_| {
+                                            if account_id() == Some(id) {
+                                                account_id.set(None);
+                                            } else {
+                                                account_id.set(Some(id));
+                                            }
+                                        },
+                                        class: format!("p-1 hover:bg-base-300 {}", if account_id() == Some(id) { "bg-base-300" } else { "" }),
+                                        td { "{account.id}" }
+                                        td { "{account.name}" }
+                                        td { {amount_pretty(account.credit)} }
+                                        td {
+                                            class: format!("flex justify-center *:w-8 *:h-8 {}", if account.overdraft {
+                                                "*:fill-success"
+                                            } else {
+                                                "*:fill-error"
+                                            }),
+                                            dangerous_inner_html: if account.overdraft { include_str!("../../../assets/check.svg") } else { include_str!("../../../assets/x.svg") }
+                                        }
+                                    }
+                                }
+                            })
+                        }
+                    }
+                }
+            }
+            button {
+                class: "grow btn btn-square btn-info btn-lg mt-auto",
+                onclick: move |_| finalize(),
+                "Charge"
+            }
+        }
+    }
 }
 
 #[derive(Clone)]
@@ -66,9 +161,8 @@ pub fn PaymentCash(purchase_stage: Signal<PurchaseStage>) -> Element {
         match dispatch_transaction(
             TransactionRequest {
                 tx_id: TRANSACTION_STATE().tx_id,
-                tender: amount,
                 items: TRANSACTION_STATE().items.iter().map(|(&k, &v)| TxEntry { id: k, quantity: v }).collect(),
-                method: TransactionMethod::Cash,
+                method: TransactionMethod::Cash { tender: amount },
             }
         ).await {
             Some(tx_res) => {
@@ -149,13 +243,13 @@ pub fn PaymentCash(purchase_stage: Signal<PurchaseStage>) -> Element {
 }
 
 #[component]
-pub fn Payment(total: u32, purchase_stage: Signal<PurchaseStage>) -> Element {
+pub fn Payment(total: u32, accounts: Signal<HashMap<u32, Account>>, purchase_stage: Signal<PurchaseStage>) -> Element {
     if *purchase_stage.read() == PurchaseStage::None {
         return rsx! {};
     }
 
     let (title, inner) = match *purchase_stage.read() {
-        PurchaseStage::Charge => ("Account", rsx! { PaymentCharge { purchase_stage } }),
+        PurchaseStage::Charge => ("Account", rsx! { PaymentCharge { accounts, purchase_stage } }),
         PurchaseStage::Cash => ("Cash", rsx! { PaymentCash { purchase_stage } }),
         _ => return rsx! {},
     };

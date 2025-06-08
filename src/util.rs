@@ -1,3 +1,8 @@
+use std::collections::HashMap;
+
+use dioxus::signals::{Signal, Writable};
+use model::Account;
+
 pub fn amount_pretty(amount: u32) -> String {
     format!("${:.02}", (amount) as f32 / 100.0)
 }
@@ -25,4 +30,19 @@ pub fn parse_cash_value(input_amount: String) -> Result<u32, ()> {
     }
 
     Err(())
+}
+
+pub async fn try_sync_accounts(mut accounts: Signal<HashMap<u32, Account>>) {
+    if let Ok(res) = crate::CLIENT
+        .get("http://localhost:5555/accounts")
+        .send()
+        .await {
+            if let Ok(new_accounts) = res.json::<Vec<Account>>().await {
+                accounts.set(
+                    new_accounts.into_iter()
+                        .map(|a| (a.id, a))
+                        .collect::<HashMap<u32, Account>>()
+                );
+            }
+        }
 }

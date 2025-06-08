@@ -44,7 +44,6 @@ pub async fn transaction(
 
     let TransactionRequest {
         tx_id,
-        tender,
         items,
         method,
     } = payload;
@@ -53,7 +52,7 @@ pub async fn transaction(
     let total = calc_total(tx_id.clone(), items.clone()).await?;
 
     let result = match method {
-        TransactionMethod::Cash => handle_cash(tx_id, tender, items, total).await,
+        TransactionMethod::Cash { tender } => handle_cash(tx_id, tender, items, total).await,
         TransactionMethod::Credit { account_id } => handle_credit(tx_id, account_id, items, total).await,
     };
 

@@ -2,11 +2,11 @@ mod account_ops;
 
 use std::collections::HashMap;
 
-use account_ops::{add_balance, remove_balance, try_sync_accounts};
+use account_ops::{add_balance, remove_balance};
 use dioxus::prelude::*;
 use model::Account;
 
-use crate::{components::searchbox::SearchBox, util::{amount_pretty, parse_cash_value}};
+use crate::{components::searchbox::SearchBox, util::{amount_pretty, parse_cash_value, try_sync_accounts}};
 
 #[component]
 pub fn Balance(accounts: Signal<HashMap<u32, Account>>) -> Element {
@@ -15,39 +15,38 @@ pub fn Balance(accounts: Signal<HashMap<u32, Account>>) -> Element {
 
     let mut status: Signal<Option<String>> = use_signal(|| None);
 
-    let render_accounts = || {
-        accounts().into_iter()
-            .map(|(id, account)| {
-                let id = id.clone();
-                rsx! {
-                    tr {
-                        key: "{id}",
-                        onclick: move |_| {
-                            if let Some(sa) = selected_account() {
-                                if sa == id {
-                                    selected_account.set(None);
-                                }
-                            } else {
-                                selected_account.set(Some(id));
+    let accounts_elements = accounts()
+        .into_iter()
+        .map(|(id, account)| {
+            let id = id.clone();
+            rsx! {
+                tr {
+                    key: "{id}",
+                    onclick: move |_| {
+                        if let Some(sa) = selected_account() {
+                            if sa == id {
+                                selected_account.set(None);
                             }
-                        },
-                        class: format!("hover:bg-base-300 {}", selected_account().map(|sa| if sa == id { "bg-base-300" } else { "" }).unwrap_or_default()),
-                        td { "{account.id}" }
-                        td { "{account.name}" }
-                        td { {format!("${:.2}", account.credit as f32 / 100.0)} }
-                        td {
-                            class: format!("flex justify-center *:w-10 *:h-10 {}", if account.overdraft {
-                                "*:fill-success"
-                            } else {
-                                "*:fill-error"
-                            }),
-                            dangerous_inner_html: if account.overdraft { include_str!("../../assets/check.svg") } else { include_str!("../../assets/x.svg") }
+                        } else {
+                            selected_account.set(Some(id));
                         }
-                        td { {if account.discount != 0 { "{account.discount}" } else { "—" }} }
+                    },
+                    class: format!("hover:bg-base-300 {}", selected_account().map(|sa| if sa == id { "bg-base-300" } else { "" }).unwrap_or_default()),
+                    td { "{account.id}" }
+                    td { "{account.name}" }
+                    td { {format!("${:.2}", account.credit as f32 / 100.0)} }
+                    td {
+                        class: format!("flex justify-center *:w-10 *:h-10 {}", if account.overdraft {
+                            "*:fill-success"
+                        } else {
+                            "*:fill-error"
+                        }),
+                        dangerous_inner_html: if account.overdraft { include_str!("../../assets/check.svg") } else { include_str!("../../assets/x.svg") }
                     }
+                    td { {if account.discount != 0 { "{account.discount}" } else { "—" }} }
                 }
-            })
-    };
+            }
+        });
 
     let selected_account_details = selected_account().map(|sa| accounts().get(&sa).map(Clone::clone)).flatten();
 
@@ -62,7 +61,7 @@ pub fn Balance(accounts: Signal<HashMap<u32, Account>>) -> Element {
                     thead {}
                     tbody {
                         class: "text-2xl",
-                        {render_accounts()}
+                        {accounts_elements}
                     }
                 }
             }

@@ -11,14 +11,13 @@ pub struct SyncState {
 
 #[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
 pub enum TransactionMethod {
-    Cash,
+    Cash { tender: u32 },
     Credit { account_id: u32 },
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
 pub struct TransactionRequest {
     pub tx_id: String,
-    pub tender: u32,
     pub items: Vec<TxEntry>,
     pub method: TransactionMethod,
 }

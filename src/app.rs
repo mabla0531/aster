@@ -4,11 +4,9 @@ use dioxus::prelude::*;
 use model::{Account, Item, SyncState};
 
 use crate::{
-    assets::*,
     components::sidebar::Sidebar,
     forms::{
-        account_management::AccountManagement, balance::Balance,
-        inventory_management::InventoryManagement, register::Register, Form,
+        balance::Balance, register::Register, Form,
     },
 };
 
@@ -50,35 +48,33 @@ pub fn App() -> Element {
 
     let navigator = use_signal(|| Form::Register);
 
-    if loaded() {
-        rsx! {
-            document::Stylesheet { href: TAILWIND }
-            Sidebar { navigator }
-            {match navigator() {
-                Form::Register => rsx! { Register { pricebook } },
-                Form::Balance => rsx! { Balance { accounts } },
-                Form::AccountManagement => rsx! { AccountManagement { accounts } },
-                Form::InventoryManagement => rsx! { InventoryManagement { pricebook } },
-            }}
-        }
-    } else {
-        rsx! {
-            document::Stylesheet { href: TAILWIND }
-            div {
-                class: "absolute top-0 left-0 flex justify-center items-center w-screen h-screen",
+    rsx! {
+        style { dangerous_inner_html: include_str!("../assets/tailwind.css") }
+        {if loaded() {
+            rsx! {
+                Sidebar { navigator }
+                {match navigator() {
+                    Form::Register => rsx! { Register { pricebook, accounts } },
+                    Form::Balance => rsx! { Balance { accounts } },
+                }}
+            }
+        } else {
+            rsx! {
                 div {
-                    class: "card w-80 h-28 bg-base-100 shadow-sm",
+                    class: "absolute top-0 left-0 flex justify-center items-center w-screen h-screen",
                     div {
-                        class: "card-body text-lg text-center",
-                        "Pricebook not loaded"
-                    }
-                    div {
-                        class: "italic text-[12px] text-gray-400 text-center p-2",
-                        "If the problem persists, please contact a supervisor."
+                        class: "card w-80 h-28 bg-base-100 shadow-sm",
+                        div {
+                            class: "card-body text-lg text-center",
+                            "Backend not running"
+                        }
+                        div {
+                            class: "italic text-[12px] text-gray-400 text-center p-2",
+                            "If the problem persists, please contact a supervisor."
+                        }
                     }
                 }
             }
-        }
+        }}
     }
-
 }
