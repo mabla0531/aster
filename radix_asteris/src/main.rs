@@ -1,10 +1,12 @@
 pub mod database;
+pub mod forms;
 pub mod server;
 pub mod transaction;
 
-use clap::{arg, command, Parser};
-use crossterm::event::{self, Event, KeyCode};
-use ratatui::Frame;
+use clap::{Parser, arg, command};
+use forms::menu::{self, menu};
+use log::{LevelFilter, info};
+use ratatui::Terminal;
 use utoipa::OpenApi;
 use utoipa_axum::{router::OpenApiRouter, routes};
 
@@ -21,14 +23,16 @@ async fn handle_args() {
     let args = Args::parse();
 
     if args.wipe {
-        print!("This will wipe all accounts, items, logs, the database and reinitialize everything, it should only be used to start COMPLETELY OVER.\n\nPlease type exactly \"Kill all data\" (without the quotes) to confirm: ");
+        print!(
+            "This will wipe all accounts, items, logs, the database and reinitialize everything, it should only be used to start COMPLETELY OVER.\n\nPlease type exactly \"Kill all data\" (without the quotes) to confirm: "
+        );
         let mut input = String::new();
         std::io::stdin().read_line(&mut input).unwrap();
         if input.trim_end() == "Kill all data" {
-            println!("Wiping database...");
+            info!("Wiping database...");
             database::wipe().await;
         } else {
-            println!("Aborting wipe.");
+            info!("Aborting wipe.");
         }
     }
 }
@@ -74,34 +78,39 @@ pub async fn start_server() {
         .unwrap();
 }
 
-fn render(frame: &mut Frame) {
-    frame.render_widget("hello world", frame.area());
+fn init_log() {
+    let current_dir = std::env::current_dir().unwrap_or_default();
+    let current_dir = current_dir.to_str().unwrap_or_default();
+
+    let _ = std::fs::create_dir_all(format!("{}/logs", current_dir));
+
+    let _ = simplelog::WriteLogger::init(
+        LevelFilter::Info,
+        Default::default(),
+        std::fs::File::create(format!(
+            "{}/logs/{}.log",
+            current_dir,
+            chrono::Local::now().format("%Y%m%d_%H%M%S")
+        ))
+        .expect("Failed to initialize file"),
+    );
+
+    info!(
+        "Radix Asteris started on {}",
+        chrono::Local::now().format("%Y%m%d_%H%M%S")
+    );
 }
 
 #[tokio::main]
 async fn main() {
+    init_log();
+
     tokio::spawn(start_server());
 
-    loop {}
-    //    color_eyre::install().expect("Failed to install color_eyre");
-    //    let mut terminal = ratatui::init();
-    //
-    //    loop {
-    //        terminal.draw(render).expect("Critical error in terminal rendering loop");
-    //
-    //        match event::read().expect("Critical error in event loop") {
-    //            Event::Key(key)  => {
-    //                match key.code {
-    //                    KeyCode::Up => {},
-    //                    KeyCode::Down => {},
-    //                    KeyCode::Char(c) => {},
-    //                    KeyCode::Enter => {},
-    //                    _ => {}
-    //                }
-    //            },
-    //            _ => {}
-    //        }
-    //    }
-    //
-    //    ratatui::restore();
+    color_eyre::install().expect("Failed to install color_eyre");
+    let mut terminal = ratatui::init();
+
+    menu::menu(&mut terminal);
+
+    ratatui::restore();
 }

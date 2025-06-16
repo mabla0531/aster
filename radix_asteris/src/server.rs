@@ -1,7 +1,9 @@
 use std::{collections::HashMap, sync::LazyLock};
 
-use axum::{extract::Path, http::HeaderMap, response::Html, Json};
-use model::{Account, SyncState, TransactionMethod, TransactionRequest, TransactionStatus, BalanceUpdate};
+use axum::{Json, extract::Path, http::HeaderMap, response::Html};
+use model::{
+    Account, BalanceUpdate, SyncState, TransactionMethod, TransactionRequest, TransactionStatus,
+};
 
 use crate::{
     database,
@@ -36,7 +38,7 @@ pub async fn transaction(
     headers: HeaderMap,
     Json(payload): Json<TransactionRequest>,
 ) -> Result<Json<TransactionStatus>, String> {
-    println!("Transaction request: {:?}", payload);
+    info!("Transaction request: {:?}", payload);
 
     if !check_auth(headers) {
         return Err("Unauthorized".to_string());
@@ -53,7 +55,9 @@ pub async fn transaction(
 
     let result = match method {
         TransactionMethod::Cash { tender } => handle_cash(tx_id, tender, items, total).await,
-        TransactionMethod::Credit { account_id } => handle_credit(tx_id, account_id, items, total).await,
+        TransactionMethod::Credit { account_id } => {
+            handle_credit(tx_id, account_id, items, total).await
+        }
     };
 
     result.map(Json)
@@ -71,7 +75,7 @@ pub async fn transaction(
     ),
 )]
 pub async fn get_accounts(headers: HeaderMap) -> Result<Json<Vec<Account>>, String> {
-    println!("Get accounts request");
+    info!("Get accounts request");
 
     if !check_auth(headers) {
         return Err("Unauthorized".to_string());
@@ -98,7 +102,7 @@ pub async fn get_account(
     headers: HeaderMap,
     Path(account_id): Path<u32>,
 ) -> Result<Json<Account>, String> {
-    println!("Get account request for account_id: {}", account_id);
+    info!("Get account request for account_id: {}", account_id);
 
     if !check_auth(headers) {
         return Err("Unauthorized".to_string());
@@ -125,7 +129,7 @@ pub async fn insert_account(
     headers: HeaderMap,
     Json(payload): Json<Account>,
 ) -> Result<Json<String>, String> {
-    println!("Insert account request: {:?}", payload);
+    info!("Insert account request: {:?}", payload);
 
     if !check_auth(headers) {
         return Err("Unauthorized".to_string());
@@ -152,7 +156,7 @@ pub async fn update_balance(
     headers: HeaderMap,
     Json(payload): Json<BalanceUpdate>,
 ) -> Result<Json<String>, String> {
-    println!("Update balance request: {:?}", payload);
+    info!("Update balance request: {:?}", payload);
 
     if !check_auth(headers) {
         return Err("Unauthorized".to_string());
@@ -176,15 +180,13 @@ pub async fn update_balance(
     ),
 )]
 pub async fn sync(headers: HeaderMap) -> Result<Json<SyncState>, String> {
-    println!("Sync request");
+    info!("Sync request");
 
     if !check_auth(headers) {
         return Err("Unauthorized".to_string());
     }
 
-    let pricebook = database::get_all_items()
-        .await
-        .map_err(|e| e.to_string())?;
+    let pricebook = database::get_all_items().await.map_err(|e| e.to_string())?;
     let accounts = database::get_all_accounts()
         .await
         .map_err(|e| e.to_string())?;
@@ -196,5 +198,8 @@ pub async fn sync(headers: HeaderMap) -> Result<Json<SyncState>, String> {
 }
 
 pub fn check_auth(headers: HeaderMap) -> bool {
-    headers.get("x-auth-token").map(|val| val.to_str().unwrap_or_default() == *AUTH_KEY).unwrap_or(false)
+    headers
+        .get("x-auth-token")
+        .map(|val| val.to_str().unwrap_or_default() == *AUTH_KEY)
+        .unwrap_or(false)
 }
