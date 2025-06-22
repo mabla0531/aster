@@ -1,6 +1,8 @@
-use ratatui::{Terminal, prelude::CrosstermBackend};
-use std::io::Stdout;
+use dioxus::prelude::*;
 
-pub fn inventory(terminal: &mut Terminal<CrosstermBackend<Stdout>>) {
-    loop {}
+use super::Form;
+
+#[component]
+pub fn Inventory(form_setter: Signal<Form>) -> Element {
+    rsx! {}
 }

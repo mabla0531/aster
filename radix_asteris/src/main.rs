@@ -4,9 +4,9 @@ pub mod server;
 pub mod transaction;
 
 use clap::{Parser, arg, command};
-use forms::menu::{self, menu};
+use dioxus::desktop::{Config, WindowBuilder};
+use forms::App;
 use log::{LevelFilter, info};
-use ratatui::Terminal;
 use utoipa::OpenApi;
 use utoipa_axum::{router::OpenApiRouter, routes};
 
@@ -101,16 +101,20 @@ fn init_log() {
     );
 }
 
-#[tokio::main]
-async fn main() {
+fn main() {
     init_log();
 
-    tokio::spawn(start_server());
+    let rt = tokio::runtime::Runtime::new().unwrap();
 
-    color_eyre::install().expect("Failed to install color_eyre");
-    let mut terminal = ratatui::init();
+    rt.spawn(async {
+        start_server().await;
+    });
 
-    menu::menu(&mut terminal);
+    let window = WindowBuilder::new()
+        .with_title("Radix Asteris")
+        .with_resizable(true);
 
-    ratatui::restore();
+    dioxus::LaunchBuilder::desktop()
+        .with_cfg(Config::new().with_window(window).with_menu(None))
+        .launch(App);
 }

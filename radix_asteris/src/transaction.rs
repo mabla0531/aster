@@ -77,7 +77,7 @@ pub async fn handle_credit(
             let discounted_total = total - (total * (account.discount / 100));
 
             // screen for insufficient credit
-            if account.credit < discounted_total && !account.overdraft {
+            if account.credit < discounted_total as i32 && !account.overdraft {
                 return Ok(TransactionStatus::Failure {
                     reason: "Insufficient Credit.".to_string(),
                 });

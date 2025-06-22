@@ -16,12 +16,22 @@ axum = { version = "0.8.4", features = ["macros"] }
 utoipa = { version = "5.3.1", features = ["axum_extras", "chrono"] }
 utoipa-axum = "0.2.0"
 utoipa-swagger-ui = { version = "9.0", features = ["axum"] }
-colored = "3.0.0"
 open = "5.3.2"
-ratatui = "0.29.0"
-color-eyre = "0.6.5"
-crossterm = "0.29.0"
 simplelog = "0.12.2"
 log = "0.4.27"
 chrono = "0.4.41"
 futures = "0.3.31"
+dioxus = { version = "0.6.3", features = ["desktop"] }
+itertools = "0.14"
+
+[profile]
+
+[profile.wasm-dev]
+inherits = "dev"
+opt-level = 1
+
+[profile.server-dev]
+inherits = "dev"
+
+[profile.android-dev]
+inherits = "dev"

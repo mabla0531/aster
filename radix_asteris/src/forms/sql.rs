@@ -1,6 +1,8 @@
-use ratatui::{Terminal, prelude::CrosstermBackend};
-use std::io::Stdout;
+use dioxus::prelude::*;
 
-pub fn sql(terminal: &mut Terminal<CrosstermBackend<Stdout>>) {
-    loop {}
+use super::Form;
+
+#[component]
+pub fn Sql(form_setter: Signal<Form>) -> Element {
+    rsx! {}
 }

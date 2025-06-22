@@ -1,6 +1,7 @@
 use std::{collections::HashMap, sync::LazyLock};
 
 use axum::{Json, extract::Path, http::HeaderMap, response::Html};
+use log::info;
 use model::{
     Account, BalanceUpdate, SyncState, TransactionMethod, TransactionRequest, TransactionStatus,
 };

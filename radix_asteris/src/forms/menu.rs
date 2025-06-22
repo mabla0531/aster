@@ -1,92 +1,41 @@
-use std::io::Stdout;
+use dioxus::prelude::*;
 
-use ratatui::{
-    Frame, Terminal,
-    crossterm::event::{self, Event, KeyCode, KeyEventKind},
-    layout::{Constraint, Direction, Layout},
-    prelude::CrosstermBackend,
-    style::{Color, Stylize},
-    widgets::Paragraph,
-};
+use super::Form;
 
-use super::{accounts, inventory, log, sql, swagger};
-
-fn render(frame: &mut Frame, selection: usize) {
-    let layout = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints(vec![
-            Constraint::Fill(1),
-            Constraint::Length(1),
-            Constraint::Length(1),
-            Constraint::Length(1),
-            Constraint::Length(1),
-            Constraint::Length(1),
-            Constraint::Length(1),
-            Constraint::Fill(1),
-        ])
-        .split(frame.area());
-
-    let center = Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints(vec![
-            Constraint::Fill(1),
-            Constraint::Length(12),
-            Constraint::Fill(1),
-        ]);
-
-    let values = vec![
-        " Accounts  ",
-        " Items     ",
-        " SQL       ",
-        " API Docs  ",
-        " Log       ",
-        " Exit      ",
-    ];
-    values.iter().enumerate().for_each(|(i, val)| {
-        let val = val.bg(if selection == i {
-            Color::Rgb(50, 60, 80)
-        } else {
-            Color::Rgb(40, 50, 70)
-        });
-        frame.render_widget(Paragraph::new(val), center.split(layout[i + 1])[1]);
-    });
-}
-
-pub fn menu(terminal: &mut Terminal<CrosstermBackend<Stdout>>) {
-    let mut selection = 0;
-    loop {
-        if let Ok(event) = event::read() {
-            if let Event::Key(k) = event {
-                if k.kind == KeyEventKind::Press {
-                    match k.code {
-                        KeyCode::Up => selection = selection.max(1) - 1, // prevent unsigned overflow without writing a shitload of code
-                        KeyCode::Down => selection = (selection + 1).min(5),
-                        KeyCode::Enter => match selection {
-                            0 => {
-                                accounts::accounts(terminal);
-                            }
-                            1 => {
-                                inventory::inventory(terminal);
-                            }
-                            2 => {
-                                sql::sql(terminal);
-                            }
-                            3 => {
-                                swagger::swagger(terminal);
-                            }
-                            4 => {
-                                log::log(terminal);
-                            }
-                            5 => {
-                                return;
-                            }
-                            _ => {}
-                        },
-                        _ => {}
-                    };
-                }
-            };
+#[component]
+pub fn Menu(form_setter: Signal<Form>) -> Element {
+    let mut status = use_signal(|| String::new());
+    rsx! {
+        div {
+            class: "flex grow flex-col gap-2 h-full",
+            button {
+                class: "btn btn-primary",
+                onclick: move |_| form_setter.set(Form::Accounts),
+                "Accounts"
+            }
+            button {
+                class: "btn btn-primary",
+                onclick: move |_| form_setter.set(Form::Inventory),
+                "Inventory"
+            }
+            button {
+                class: "btn btn-primary",
+                onclick: move |_| form_setter.set(Form::Sql),
+                "SQL"
+            }
+            button {
+                class: "btn btn-primary",
+                onclick: move |_| {
+                    if let Err(e) = open::that("http://localhost:5555/swagger-ui") {
+                        status.set(format!("Failed to open swagger-ui doc site: {}", e));
+                    }
+                },
+                "Swagger"
+            }
+            div {
+                class: "h-[1em] text-error",
+                {status}
+            }
         }
-        let _ = terminal.draw(|frame| render(frame, selection));
     }
 }

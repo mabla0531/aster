@@ -270,7 +270,7 @@ pub async fn get_account(account_id: u32) -> Result<Account, DBError> {
         |row| {
             let id: u32 = row.get(0)?;
             let name: String = row.get(1)?;
-            let credit: u32 = row.get(2)?;
+            let credit: i32 = row.get(2)?;
             let overdraft: bool = row.get::<usize, u32>(3)? != 0;
             let discount: u32 = row.get(4)?;
             let bunk: u32 = row.get(5)?;
@@ -298,7 +298,7 @@ pub async fn get_all_accounts() -> Result<Vec<Account>, DBError> {
     let accounts = generic_query("SELECT * FROM Accounts", |row| {
         let id: u32 = row.get(0)?;
         let name: String = row.get(1)?;
-        let credit: u32 = row.get(2)?;
+        let credit: i32 = row.get(2)?;
         let overdraft: bool = row.get(3)?;
         let discount: u32 = row.get(4)?;
         let bunk: u32 = row.get(5)?;
@@ -330,6 +330,11 @@ pub async fn insert_account(account: Account) -> Result<(), DBError> {
             account.bunk
         )
     ).await
+}
+
+pub async fn remove_account(id: u32) -> Result<(), DBError> {
+    info!("DB | remove_account");
+    generic_exec(&format!("DELETE FROM Accounts WHERE id = {}", id)).await
 }
 
 pub async fn update_balance(body: BalanceUpdate) -> Result<(), DBError> {

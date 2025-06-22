@@ -48,7 +48,7 @@ pub struct TxEntry {
 pub struct Account {
     pub id: u32,
     pub name: String,
-    pub credit: u32,
+    pub credit: i32,
     pub overdraft: bool,
     pub discount: u32,
     pub bunk: u32,
@@ -56,21 +56,22 @@ pub struct Account {
 
 #[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
 pub struct BalanceUpdate {
-    pub id: u32, 
+    pub id: u32,
     pub amount: u32,
-    pub operation: UpdateOperation
+    pub operation: UpdateOperation,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
 pub enum UpdateOperation {
-    Add, Sub
+    Add,
+    Sub,
 }
 
 impl Display for UpdateOperation {
     fn fmt(&self, w: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
         match self {
             Self::Add => write!(w, "+"),
-            Self::Sub => write!(w, "-")
+            Self::Sub => write!(w, "-"),
         }
     }
 }
